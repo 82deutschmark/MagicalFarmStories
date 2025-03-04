@@ -14,44 +14,45 @@ export default function CharacterSelect({ onProceed }: CharacterSelectProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   // Fetch images from database
-  const { data: farmImages, refetch } = useQuery<FarmImage[]>({
+  const { data: farmImages = [], isLoading } = useQuery<FarmImage[]>({
     queryKey: ['/api/farm-images'],
-    queryFn: async () => {
-      const response = await apiRequest<FarmImage[]>("GET", "/api/farm-images");
-      return response;
-    },
+    queryFn: () => apiRequest<FarmImage[]>("GET", "/api/farm-images")
   });
 
   // Get a random image from the available images
   const getRandomImage = () => {
-    if (!farmImages || farmImages.length === 0) return null;
+    if (farmImages.length === 0) return;
     const randomIndex = Math.floor(Math.random() * farmImages.length);
-    const randomImage = farmImages[randomIndex];
-    setSelectedImage(randomImage.imageUrl);
+    setSelectedImage(farmImages[randomIndex].imageUrl);
   };
 
   // Get initial random image on component mount
   useEffect(() => {
-    if (farmImages && farmImages.length > 0) {
+    if (farmImages.length > 0) {
       getRandomImage();
     }
   }, [farmImages]);
 
+  if (isLoading) {
+    return <div>Loading farm friends...</div>;
+  }
+
   return (
     <div className="flex flex-col items-center gap-6">
       {selectedImage && (
-        <Card className="p-4 relative">
+        <Card className="p-4 relative hover:shadow-lg transition-shadow">
           <img
             src={selectedImage}
             alt="Farm Animal"
             className="w-64 h-64 object-cover rounded-lg"
           />
-          <div className="absolute bottom-4 right-4 flex gap-2">
+          <div className="absolute bottom-4 right-4">
             <Button
               size="icon"
               variant="outline"
               onClick={getRandomImage}
-              title="Get another random image"
+              className="bg-white/90 hover:bg-white"
+              title="Get another random friend"
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
@@ -62,6 +63,7 @@ export default function CharacterSelect({ onProceed }: CharacterSelectProps) {
       <Button 
         onClick={() => selectedImage && onProceed(selectedImage)}
         disabled={!selectedImage}
+        size="lg"
         className="w-full max-w-xs"
       >
         Describe This Character
