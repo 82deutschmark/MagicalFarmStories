@@ -52,66 +52,7 @@ export async function analyzeCharacterImage(imageBase64: string, storyMakerId: s
   }
 }
 
-export async function generateIllustration(storyText: string): Promise<string> {
-  try {
-    const response = await fetch(`${API_URL}/api/generate-illustration`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ storyText }),
-    });
 
-    if (!response.ok) {
-      throw new Error("Failed to generate illustration");
-    }
-
-    const data = await response.json();
-    return data.imageUrl;
-  } catch (error) {
-    console.error("Error generating illustration:", error);
-    throw error;
-  }
-}
-
-export async function generateStory(
-  characterName: string,
-  characterDescription: string,
-  additionalPrompt: string
-): Promise<string> {
-  try {
-    // Step 1: Create a new thread
-    const threadId = await createThread();
-    console.log("Created thread:", threadId);
-
-    // Step 2: Add a system message with instructions
-    await addMessageToThread(
-      threadId,
-      "You are a specialist in creating engaging children's stories about farm animals. Create a story about a character based on the description provided.",
-      "system"
-    );
-
-    // Step 3: Add the user message with character details and prompt
-    const userMessage = `
-Create a children's story about a farm animal character named ${characterName}.
-Character description: ${characterDescription}
-Additional details: ${additionalPrompt}
-`;
-
-    await addMessageToThread(threadId, userMessage, "user");
-
-    // Step 4: Run the assistant on the thread
-    const runId = await runAssistant(threadId, ASSISTANT_ID);
-
-    // Step 5: Wait for the run to complete and get the response
-    const storyText = await getRunCompletion(threadId, runId);
-
-    return storyText;
-  } catch (error) {
-    console.error("Error generating story:", error);
-    return "Once upon a time on a farm, there was a character who had many adventures. The end.";
-  }
-}
 
 // Helper function to create a new thread
 async function createThread(): Promise<string> {
@@ -307,29 +248,6 @@ export const generateStory = async (
   }
 };
 
-export const generateIllustration = async (storyText: string): Promise<string> => {
-  try {
-    const response = await fetch('/api/generate-illustration', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        storyText,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to generate illustration: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.imageUrl;
-  } catch (error) {
-    console.error('Error generating illustration:', error);
-    throw error;
-  }
-};
 
 /**
  * Polls the run status until it's completed or failed
