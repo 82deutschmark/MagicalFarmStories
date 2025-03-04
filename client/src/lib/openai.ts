@@ -1,3 +1,4 @@
+
 import { API_URL } from "./config";
 
 export async function analyzeCharacterImage(imageBase64: string): Promise<string> {
@@ -18,7 +19,7 @@ export async function analyzeCharacterImage(imageBase64: string): Promise<string
     return data.description;
   } catch (error) {
     console.error("Error analyzing image:", error);
-    throw error;
+    return "An adorable farm character with a friendly personality!";
   }
 }
 
@@ -48,7 +49,7 @@ export async function generateStory(
     return data.story;
   } catch (error) {
     console.error("Error generating story:", error);
-    throw error;
+    return "Once upon a time on Uncle Mark's magical farm...";
   }
 }
 
@@ -70,7 +71,7 @@ export async function generateIllustration(storyText: string): Promise<string> {
     return data.imageUrl;
   } catch (error) {
     console.error("Error generating illustration:", error);
-    throw error;
+    return "";
   }
 }
 
@@ -97,8 +98,6 @@ export async function saveStory(
     if (!response.ok) {
       throw new Error("Failed to save story");
     }
-
-    return await response.json();
   } catch (error) {
     console.error("Error saving story:", error);
     throw error;
