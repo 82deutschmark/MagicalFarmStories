@@ -1,63 +1,59 @@
+
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CHARACTERS } from "@shared/schema";
-
-interface CharacterSelectProps {
-  characters: typeof CHARACTERS;
-  selectedCharacter: string | null;
-  onSelect: (id: string) => void;
-}
-
-export default function CharacterSelect({
-  characters,
-  selectedCharacter,
-  onSelect
-}: CharacterSelectProps) {
-  return (
-    <>
-      {characters.map((character) => (
-        <Card
-          key={character.id}
-          className={`cursor-pointer transition-all duration-200 ${
-            selectedCharacter === character.id
-              ? "ring-2 ring-primary"
-              : "hover:shadow-lg"
-          }`}
-          onClick={() => onSelect(character.id)}
-        >
-          <CardContent className="p-4">
-            <div
-              className="w-full aspect-square mb-4"
-              dangerouslySetInnerHTML={{ __html: character.svg }}
-            />
-            <h3 className="text-xl font-semibold text-center">{character.name}</h3>
-          </CardContent>
-        </Card>
-      ))}
-    </>
-  );
-}
-import { useState, useEffect } from "react";
-import { FARM_IMAGES } from "@shared/schema";
+import { FARM_IMAGES, CHARACTERS } from "@shared/schema";
 import Image from "next/image";
 
 interface CharacterSelectProps {
   selectedCharacter: string | null;
   onSelect: (imagePath: string) => void;
+  characters?: typeof CHARACTERS;
 }
 
 export default function CharacterSelect({ 
   selectedCharacter, 
-  onSelect 
+  onSelect,
+  characters
 }: CharacterSelectProps) {
   const [randomImages, setRandomImages] = useState<string[]>([]);
   
   // Select 3 random images when component mounts
   useEffect(() => {
-    const shuffled = [...FARM_IMAGES].sort(() => 0.5 - Math.random());
-    setRandomImages(shuffled.slice(0, 3));
-  }, []);
+    if (!characters) {
+      const shuffled = [...FARM_IMAGES].sort(() => 0.5 - Math.random());
+      setRandomImages(shuffled.slice(0, 3));
+    }
+  }, [characters]);
 
+  // If characters are provided, render character cards
+  if (characters) {
+    return (
+      <>
+        {characters.map((character) => (
+          <Card
+            key={character.id}
+            className={`cursor-pointer transition-all duration-200 ${
+              selectedCharacter === character.id
+                ? "ring-2 ring-primary"
+                : "hover:shadow-lg"
+            }`}
+            onClick={() => onSelect(character.id)}
+          >
+            <CardContent className="p-4">
+              <div
+                className="w-full aspect-square mb-4"
+                dangerouslySetInnerHTML={{ __html: character.svg }}
+              />
+              <h3 className="text-xl font-semibold text-center">{character.name}</h3>
+            </CardContent>
+          </Card>
+        ))}
+      </>
+    );
+  }
+
+  // Otherwise render farm images
   return (
     <>
       {randomImages.map((imagePath, index) => (
