@@ -16,7 +16,7 @@ export default function CharacterSelect({ onProceed }: CharacterSelectProps) {
   // Fetch images from database
   const { data: farmImages = [], isLoading } = useQuery<FarmImage[]>({
     queryKey: ['/api/farm-images'],
-    queryFn: () => apiRequest<FarmImage[]>("GET", "/api/farm-images")
+    queryFn: async () => apiRequest<FarmImage[]>("GET", "/api/farm-images")
   });
 
   // Get a random image from the available images
