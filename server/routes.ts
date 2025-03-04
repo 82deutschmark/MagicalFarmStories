@@ -61,7 +61,9 @@ export async function registerRoutes(app: Express) {
       
       // Apply filters based on query parameters
       if (excludeIds.length > 0) {
-        query = query.where(sql`${farmImages.id} NOT IN (${excludeIds.join(',')})`);
+        // Use drizzle-orm's sql.join to safely parameterize each ID
+        const excludeValues = excludeIds.map(id => sql`${id}`);
+        query = query.where(sql`${farmImages.id} NOT IN (${sql.join(excludeValues, sql`, `)})`);
       }
       
       if (character) {
