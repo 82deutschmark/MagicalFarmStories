@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
@@ -7,10 +7,10 @@ interface CharacterSelectProps {
 }
 
 export function CharacterSelect({ onProceed }: CharacterSelectProps) {
-  const navigate = useNavigate();
+  const [_, setLocation] = useLocation();
 
   const handleGoToDebug = () => {
-    navigate("/debug");
+    setLocation("/debug");
   };
 
   return (

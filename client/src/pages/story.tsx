@@ -64,12 +64,30 @@ export default function Story() {
       if (!imageBase64) {
         return "";
       }
-      const response = await apiRequest("POST", "/api/analyze-image", { imageBase64 });
+      
+      // Generate a random story maker ID if not provided
+      const storyMakerId = Math.random().toString(36).substring(2, 15);
+      
+      // Send the image for analysis
+      const response = await apiRequest("POST", "/api/analyze-image", { 
+        imageBase64,
+        storyMakerId
+      });
+      
       const description = response.description || "";
       setImageDescription(description);
       return description;
     },
-    enabled: !!imageBase64
+    enabled: !!imageBase64,
+    retry: 1,
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to analyze the image. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Error analyzing image:", error);
+    }
   });
 
   const generateStoryMutation = useMutation({
