@@ -21,7 +21,7 @@ export default function CharacterSelect({ onProceed }: CharacterSelectProps) {
     queryFn: async () => {
       const response = await apiRequest<FarmImage[]>("GET", "/api/farm-images");
       console.log("Fetched images:", response); // Debug log
-      
+
       // Add more detailed logging
       if (Array.isArray(response)) {
         console.log(`Retrieved ${response.length} images`);
@@ -36,7 +36,7 @@ export default function CharacterSelect({ onProceed }: CharacterSelectProps) {
       } else {
         console.error("Response is not an array:", response);
       }
-      
+
       // Ensure we're returning an array
       return Array.isArray(response) ? response : [];
     }
@@ -121,6 +121,7 @@ export default function CharacterSelect({ onProceed }: CharacterSelectProps) {
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     console.error(`Error loading image ${index}`, e);
+                    console.log("Image data length:", image.imageBase64 ? image.imageBase64.length : 0);
                     e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" fill="%23f0f0f0"/><text x="50%" y="50%" font-family="Arial" font-size="24" text-anchor="middle" fill="%23999">Image Error</text></svg>';
                   }}
                 />

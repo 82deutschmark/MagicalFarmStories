@@ -1,12 +1,11 @@
+
 import { useState } from "react";
 import { useLocation } from "wouter";
 import CharacterSelect from "@/components/character-select";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function Home() {
   const [, setLocation] = useLocation();
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const handleProceed = (imagePath: string) => {
     console.log("Selected image path:", imagePath);
@@ -33,7 +32,6 @@ export default function Home() {
             </h2>
 
             <CharacterSelect onProceed={handleProceed} />
-
           </CardContent>
         </Card>
       </div>
