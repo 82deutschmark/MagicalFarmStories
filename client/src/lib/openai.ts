@@ -257,3 +257,103 @@ async function getRunCompletion(threadId: string, runId: string): Promise<string
     throw error;
   }
 }
+import axios from 'axios';
+
+/**
+ * Analyzes an image using OpenAI's Vision API via the server endpoint
+ */
+export const analyzeImage = async (imageBase64: string, storyMakerId: string) => {
+  try {
+    const response = await axios.post('/api/analyze-image', {
+      imageBase64,
+      storyMakerId
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error analyzing image:', error);
+    throw error;
+  }
+};
+
+/**
+ * Generates a story using OpenAI's API via the Assistants endpoint
+ */
+export const generateStory = async (characterDescription: string, characterName: string) => {
+  try {
+    // Create a new thread
+    const threadResponse = await axios.post('/api/openai/threads');
+    const threadId = threadResponse.data.id;
+    
+    // Add a message to the thread
+    const prompt = `Create a short children's story (about 300 words) about a farm animal character named ${characterName}. 
+    Here's a description of the character: ${characterDescription}. 
+    Make the story wholesome, engaging for children, and include a simple moral lesson.`;
+    
+    await axios.post(`/api/openai/threads/${threadId}/messages`, {
+      role: 'user',
+      content: prompt
+    });
+    
+    // Run the assistant on the thread
+    const assistantId = process.env.VITE_ASSISTANT_ID || 'asst_ZExL77IkNDUHucztPYSeHnLw';
+    const runResponse = await axios.post(`/api/openai/threads/${threadId}/runs`, {
+      assistant_id: assistantId
+    });
+    
+    // Poll for the run to complete
+    const runId = runResponse.data.id;
+    let runStatus = await pollRunStatus(threadId, runId);
+    
+    // Get the messages from the thread
+    const messagesResponse = await axios.get(`/api/openai/threads/${threadId}/messages`);
+    const messages = messagesResponse.data.messages;
+    
+    // Find the assistant's response (usually the first message)
+    const assistantMessage = messages.find(msg => msg.role === 'assistant');
+    
+    if (!assistantMessage) {
+      throw new Error('No response from assistant');
+    }
+    
+    return assistantMessage.content[0].text.value;
+  } catch (error) {
+    console.error('Error generating story:', error);
+    throw error;
+  }
+};
+
+/**
+ * Polls the run status until it's completed or failed
+ */
+const pollRunStatus = async (threadId: string, runId: string, maxAttempts = 20) => {
+  for (let i = 0; i < maxAttempts; i++) {
+    const response = await axios.get(`/api/openai/threads/${threadId}/runs/${runId}`);
+    const run = response.data;
+    
+    if (run.status === 'completed') {
+      return run;
+    } else if (run.status === 'failed' || run.status === 'cancelled') {
+      throw new Error(`Run ${runId} ${run.status}`);
+    }
+    
+    // Wait for 1 second before polling again
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  
+  throw new Error('Max polling attempts reached');
+};
+
+/**
+ * Generates an illustration using DALL-E via the server endpoint
+ */
+export const generateIllustration = async (storyText: string) => {
+  try {
+    const response = await axios.post('/api/generate-illustration', {
+      storyText
+    });
+    return response.data.imageUrl;
+  } catch (error) {
+    console.error('Error generating illustration:', error);
+    throw error;
+  }
+};
