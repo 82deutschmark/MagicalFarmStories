@@ -1,9 +1,10 @@
 import OpenAI from "openai";
 
-const openai = new OpenAI({ 
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
   dangerouslyAllowBrowser: true
 });
+
 const ASSISTANT_ID = "asst_ZExL77IkNDUHucztPYSeHnLw";
 
 export async function analyzeCharacterImage(base64Image: string): Promise<string> {
@@ -55,41 +56,46 @@ Please create a magical story about this character's adventure on Uncle Mark's f
     // Poll for completion
     await waitForRunCompletion(thread.id, run.id);
 
-    // Get the assistant's response
+    // Get the messages
     const messages = await openai.beta.threads.messages.list(thread.id);
-    const assistantMessage = messages.data.find(msg => msg.role === "assistant");
 
-    if (!assistantMessage?.content[0]) {
-      throw new Error("No response from assistant");
+    // Return the assistant's response
+    const assistantMessages = messages.data.filter(msg => msg.role === "assistant");
+    if (assistantMessages.length > 0) {
+      const latestMessage = assistantMessages[0];
+      if (typeof latestMessage.content[0].text === 'object') {
+        return latestMessage.content[0].text.value;
+      }
+      return "";
     }
 
-    const content = assistantMessage.content[0];
-    if (content.type !== 'text') {
-      throw new Error("Unexpected response type from assistant");
-    }
-
-    return content.text.value;
+    return "";
   } catch (error) {
     console.error("Error generating story:", error);
-    return "Once upon a time on Uncle Mark's farm... (Sorry, I'm having trouble telling the story right now)";
+    return "Once upon a time, there was a magical adventure... (Sorry, I couldn't finish the story right now)";
   }
 }
 
-async function waitForRunCompletion(threadId: string, runId: string, maxAttempts = 10): Promise<void> {
-  for (let i = 0; i < maxAttempts; i++) {
-    const run = await openai.beta.threads.runs.retrieve(threadId, runId);
+async function waitForRunCompletion(threadId: string, runId: string, maxRetries = 10): Promise<void> {
+  let retries = 0;
 
-    if (run.status === 'completed') {
+  while (retries < maxRetries) {
+    const runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
+
+    if (runStatus.status === "completed") {
       return;
-    } else if (run.status === 'failed' || run.status === 'cancelled') {
-      throw new Error(`Assistant run failed with status: ${run.status}`);
     }
 
-    // Wait 1 second before checking again
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    if (runStatus.status === "failed" || runStatus.status === "cancelled") {
+      throw new Error(`Run failed with status: ${runStatus.status}`);
+    }
+
+    // Wait for a few seconds before checking again
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    retries++;
   }
 
-  throw new Error('Assistant run timed out');
+  throw new Error("Timed out waiting for assistant response");
 }
 
 export async function generateIllustration(storyText: string): Promise<string> {
@@ -103,30 +109,4 @@ export async function generateIllustration(storyText: string): Promise<string> {
   });
 
   return response.data[0].url || "";
-}
-
-export async function analyzeCharacterImage(base64Image: string): Promise<string> {
-  const response = await openai.chat.completions.create({
-    model: "gpt-4-vision-preview",
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: "Describe this farm animal in detail. What kind of animal is it? What does it look like? What might its personality be like? Give it a fun, whimsical description that would appeal to children.",
-          },
-          {
-            type: "image_url",
-            image_url: {
-              url: `data:image/png;base64,${base64Image}`,
-            },
-          },
-        ],
-      },
-    ],
-    max_tokens: 300,
-  });
-
-  return response.choices[0]?.message?.content || "";
 }
