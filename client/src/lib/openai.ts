@@ -1,19 +1,16 @@
-
-import { API_URL } from "./config";
-
-interface ThreadResponse {
-  id: string;
-}
-
-interface MessageResponse {
-  id: string;
-  thread_id: string;
-}
+import { API_URL } from './constants';
 
 interface RunResponse {
   id: string;
+  object: string;
+  created_at: number;
   thread_id: string;
+  assistant_id: string;
   status: string;
+  last_error?: {
+    code: string;
+    message: string;
+  };
 }
 
 interface RunCompletionResponse {
@@ -31,7 +28,68 @@ interface RunCompletionResponse {
 }
 
 // The assistant ID from your configuration
-const ASSISTANT_ID = "asst_ZExL77IkNDUHucztPYSeHnLw";
+const ASSISTANT_ID = import.meta.env.VITE_ASSISTANT_ID || '';
+
+export async function analyzeCharacterImage(imageBase64: string, storyMakerId: string): Promise<string> {
+  try {
+    const response = await fetch(`${API_URL}/api/analyze-image`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ imageBase64, storyMakerId }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to analyze image");
+    }
+
+    const data = await response.json();
+    return data.description;
+  } catch (error) {
+    console.error("Error analyzing image:", error);
+    return "An adorable farm character with a friendly personality!";
+  }
+}
+
+export async function generateStory(
+  characterName: string,
+  characterDescription: string,
+  additionalPrompt: string
+): Promise<string> {
+  try {
+    // Step 1: Create a new thread
+    const threadId = await createThread();
+    console.log("Created thread:", threadId);
+
+    // Step 2: Add a system message with instructions
+    await addMessageToThread(
+      threadId,
+      "You are a specialist in creating engaging children's stories about farm animals. Create a story about a character based on the description provided.",
+      "system"
+    );
+
+    // Step 3: Add the user message with character details and prompt
+    const userMessage = `
+Create a children's story about a farm animal character named ${characterName}.
+Character description: ${characterDescription}
+Additional details: ${additionalPrompt}
+`;
+
+    await addMessageToThread(threadId, userMessage, "user");
+
+    // Step 4: Run the assistant on the thread
+    const runId = await runAssistant(threadId, ASSISTANT_ID);
+
+    // Step 5: Wait for the run to complete and get the response
+    const storyText = await getRunCompletion(threadId, runId);
+
+    return storyText;
+  } catch (error) {
+    console.error("Error generating story:", error);
+    return "Once upon a time on a farm, there was a character who had many adventures. The end.";
+  }
+}
 
 // Helper function to create a new thread
 async function createThread(): Promise<string> {
@@ -40,14 +98,14 @@ async function createThread(): Promise<string> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-      }
+      },
     });
 
     if (!response.ok) {
       throw new Error(`Failed to create thread: ${response.status}`);
     }
 
-    const data = await response.json() as ThreadResponse;
+    const data = await response.json();
     return data.id;
   } catch (error) {
     console.error("Error creating thread:", error);
@@ -73,107 +131,10 @@ async function addMessageToThread(threadId: string, content: string, role: "user
       throw new Error(`Failed to add message: ${response.status}`);
     }
 
-    const data = await response.json() as MessageResponse;
+    const data = await response.json();
     return data.id;
   } catch (error) {
     console.error("Error adding message:", error);
-    throw error;
-  }
-}
-
-// Helper function to run the assistant on a thread
-async function runAssistant(threadId: string): Promise<string> {
-  try {
-    const response = await fetch(`${API_URL}/api/openai/threads/${threadId}/runs`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        assistant_id: ASSISTANT_ID
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to run assistant: ${response.status}`);
-    }
-
-    const data = await response.json() as RunResponse;
-    return data.id;
-  } catch (error) {
-    console.error("Error running assistant:", error);
-    throw error;
-  }
-}
-
-// Helper function to check run status and get messages
-async function getRunCompletion(threadId: string, runId: string): Promise<string> {
-  try {
-    let status = "in_progress";
-    let attempts = 0;
-    const maxAttempts = 30; // Maximum number of polling attempts
-    
-    while (status !== "completed" && status !== "failed" && attempts < maxAttempts) {
-      const response = await fetch(`${API_URL}/api/openai/threads/${threadId}/runs/${runId}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to check run status: ${response.status}`);
-      }
-
-      const data = await response.json() as RunResponse;
-      status = data.status;
-      
-      if (status === "failed") {
-        throw new Error("Assistant run failed");
-      }
-      
-      if (status !== "completed") {
-        // Wait 1 second before polling again
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        attempts++;
-      }
-    }
-    
-    if (attempts >= maxAttempts) {
-      throw new Error("Timed out waiting for assistant to complete");
-    }
-    
-    // Get the latest messages
-    const messagesResponse = await fetch(`${API_URL}/api/openai/threads/${threadId}/messages`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      }
-    });
-
-    if (!messagesResponse.ok) {
-      throw new Error(`Failed to get messages: ${messagesResponse.status}`);
-    }
-
-    const messagesData = await messagesResponse.json();
-    // Extract the latest assistant message
-    const assistantMessages = messagesData.messages.filter((msg: any) => msg.role === "assistant");
-    
-    if (assistantMessages.length > 0) {
-      // Get the content from the latest assistant message
-      const latestMessage = assistantMessages[0];
-      // Extract text content
-      const textContent = latestMessage.content
-        .filter((content: any) => content.type === "text")
-        .map((content: any) => content.text.value)
-        .join('\n');
-      
-      return textContent;
-    }
-    
-    throw new Error("No assistant messages found");
-  } catch (error) {
-    console.error("Error getting run completion:", error);
     throw error;
   }
 }
@@ -206,170 +167,71 @@ async function runAssistant(threadId: string, assistantId: string): Promise<stri
 // Helper function to wait for a run to complete and return the results
 async function getRunCompletion(threadId: string, runId: string): Promise<string> {
   try {
-    // Poll the run status until it's completed
-    let runStatus = "queued";
+    let status = "in_progress";
     let attempts = 0;
-    const maxAttempts = 50; // Limit polling attempts to avoid infinite loops
-    
-    while (runStatus !== "completed" && attempts < maxAttempts) {
-      // Wait before polling to avoid too many requests
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Check the run status
-      const statusResponse = await fetch(`${API_URL}/api/openai/threads/${threadId}/runs/${runId}`, {
+    const maxAttempts = 30; // Maximum number of polling attempts
+
+    while (status !== "completed" && status !== "failed" && attempts < maxAttempts) {
+      const response = await fetch(`${API_URL}/api/openai/threads/${threadId}/runs/${runId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-        },
+        }
       });
-      
-      if (!statusResponse.ok) {
-        throw new Error(`Failed to check run status: ${statusResponse.status}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to check run status: ${response.status}`);
       }
-      
-      const statusData = await statusResponse.json() as RunResponse;
-      runStatus = statusData.status;
-      
-      // If the run failed, throw an error
-      if (runStatus === "failed" || runStatus === "cancelled" || runStatus === "expired") {
-        throw new Error(`Run ${runStatus}: ${statusData.last_error?.message || "Unknown error"}`);
+
+      const data = await response.json() as RunResponse;
+      status = data.status;
+
+      if (status === "failed") {
+        throw new Error("Assistant run failed");
       }
-      
-      attempts++;
+
+      if (status !== "completed") {
+        // Wait 1 second before polling again
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        attempts++;
+      }
     }
-    
-    // If we've reached max attempts without completion, throw an error
+
     if (attempts >= maxAttempts) {
-      throw new Error("Max polling attempts reached without run completion");
+      throw new Error("Timed out waiting for assistant to complete");
     }
-    
-    // Get the thread messages now that the run is complete
+
+    // Get the latest messages
     const messagesResponse = await fetch(`${API_URL}/api/openai/threads/${threadId}/messages`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-      },
+      }
     });
-    
+
     if (!messagesResponse.ok) {
       throw new Error(`Failed to get messages: ${messagesResponse.status}`);
     }
-    
+
     const messagesData = await messagesResponse.json();
+    // Extract the latest assistant message
     const assistantMessages = messagesData.messages.filter((msg: any) => msg.role === "assistant");
-    
+
     if (assistantMessages.length > 0) {
+      // Get the content from the latest assistant message
       const latestMessage = assistantMessages[0];
+      // Extract text content
       const textContent = latestMessage.content
         .filter((content: any) => content.type === "text")
         .map((content: any) => content.text.value)
         .join('\n');
-      
+
       return textContent;
     }
-    
+
     throw new Error("No assistant messages found");
   } catch (error) {
     console.error("Error getting run completion:", error);
     throw error;
   }
-}
-
-export async function analyzeCharacterImage(imageBase64: string, storyMakerId: string): Promise<string> {
-  try {
-    const response = await fetch(`${API_URL}/api/analyze-image`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ imageBase64, storyMakerId }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to analyze image");
-    }
-
-    const data = await response.json();
-    return data.description;
-  } catch (error) {
-    console.error("Error analyzing image:", error);
-    return "An adorable farm character with a friendly personality!";
-  }
-}
-
-// Define response types for the Assistants API
-interface ThreadResponse {
-  id: string;
-  object: string;
-  created_at: number;
-}
-
-interface MessageResponse {
-  id: string;
-  object: string;
-  created_at: number;
-  thread_id: string;
-  role: "user" | "assistant" | "system";
-  content: any[];
-}
-
-interface RunResponse {
-  id: string;
-  object: string;
-  created_at: number;
-  thread_id: string;
-  assistant_id: string;
-  status: string;
-  last_error?: {
-    code: string;
-    message: string;
-  };
-}
-
-export async function generateStory(
-  characterName: string,
-  characterDescription: string,
-  additionalPrompt: string
-): Promise<string> {
-  try {
-    // Step 1: Create a new thread
-    const threadId = await createThread();
-    console.log("Created thread:", threadId);
-    
-    // Step 2: Add a system message with instructions
-    await addMessageToThread(
-      threadId,
-      "You are a specialist in creating engaging children's stories about farm animals. Create a story about a character based on the description provided.",
-      "system"
-    );
-    
-    // Step 3: Add the user message with character details and prompt
-    const userMessage = `
-Create a children's story about a farm animal character named ${characterName}.
-Character description: ${characterDescription}
-Additional details: ${additionalPrompt}
-
-The story should be engaging, positive, and suitable for young children. Include a beginning, middle, and end.
-    `;
-    
-    await addMessageToThread(threadId, userMessage);
-    
-    // Step 4: Run the assistant on the thread
-    const runId = await runAssistant(threadId, ASSISTANT_ID);
-    console.log("Started assistant run:", runId);
-    
-    // Step 5: Wait for completion and get the generated story
-    const story = await getRunCompletion(threadId, runId);
-    
-    return story;
-  } catch (error) {
-    console.error("Error generating story:", error);
-    return "Once upon a time on Uncle Mark's magical farm...";
-  }
-}
-
-export async function generateIllustration(storyText: string): Promise<string> {
-  // This function would be implemented for image generation if needed
-  // Not currently implemented
-  return "";
 }
