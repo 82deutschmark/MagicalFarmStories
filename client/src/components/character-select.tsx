@@ -33,13 +33,13 @@ export default function CharacterSelect({ onProceed }: CharacterSelectProps) {
           <Card 
             key={image.id}
             className={`cursor-pointer transition-all duration-200 p-4 ${
-              selectedImage === image.imageUrl ? 'ring-2 ring-primary' : 'hover:shadow-lg'
+              selectedImage === image.storyMakerId ? 'ring-2 ring-primary' : 'hover:shadow-lg'
             }`}
-            onClick={() => setSelectedImage(image.imageUrl)}
+            onClick={() => setSelectedImage(image.storyMakerId)}
           >
             <img
-              src={image.imageUrl}
-              alt="Farm Animal"
+              src={`data:image/jpeg;base64,${image.imageBase64}`}
+              alt={image.description || "Farm Animal"}
               className="w-full aspect-square object-cover rounded-lg"
             />
           </Card>

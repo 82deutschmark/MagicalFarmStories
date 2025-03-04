@@ -1,31 +1,40 @@
-import { pgTable, text, serial, timestamp } from "drizzle-orm/pg-core";
+
+import { pgTable, text, serial, timestamp, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const farmImages = pgTable("farm_images", {
   id: serial("id").primaryKey(),
-  imageUrl: text("image_url").notNull(),
+  storyMakerId: text("story_maker_id").notNull().unique(),
+  imageBase64: text("image_base64").notNull(),
+  originalFileName: text("original_file_name"),
   description: text("description"),
+  analyzedByAI: boolean("analyzed_by_ai").default(false),
+  selectionCount: integer("selection_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const stories = pgTable("stories", {
   id: serial("id").primaryKey(),
   character: text("character").notNull(),
-  characterImage: text("character_image").notNull(),
+  characterImageId: text("character_image_id").notNull(), // References storyMakerId
   storyText: text("story_text").notNull(),
   illustration: text("illustration"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertFarmImageSchema = createInsertSchema(farmImages).pick({
-  imageUrl: true,
+  storyMakerId: true,
+  imageBase64: true,
+  originalFileName: true,
   description: true,
+  analyzedByAI: true,
+  selectionCount: true,
 });
 
 export const insertStorySchema = createInsertSchema(stories).pick({
   character: true,
-  characterImage: true,
+  characterImageId: true,
   storyText: true,
   illustration: true,
 });

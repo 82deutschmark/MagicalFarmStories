@@ -24,10 +24,8 @@ export async function registerRoutes(app: Express) {
   // Get 3 random images from database
   router.get("/api/farm-images", async (req, res) => {
     try {
-      const images = await db.query(
-        'SELECT * FROM farm_images ORDER BY RANDOM() LIMIT 3'
-      );
-      res.json(images.rows);
+      const images = await db.select().from(farmImages).orderBy(sql`RANDOM()`).limit(3);
+      res.json(images);
     } catch (error) {
       console.error("Error fetching farm images:", error);
       res.status(500).json({ message: "Failed to fetch farm images" });
@@ -37,28 +35,62 @@ export async function registerRoutes(app: Express) {
   // API endpoints
   router.post("/api/analyze-image", async (req, res) => {
     try {
-      const { imageBase64 } = req.body;
+      const { imageBase64, storyMakerId } = req.body;
 
       if (!imageBase64) {
         return res.status(400).json({ message: "Image data required" });
       }
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4-vision-preview",
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Describe this farm animal character for a children's story. Focus on appearance, personality traits, and anything unique about it." },
-              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
-            ],
-          },
-        ],
-        max_tokens: 300,
-      });
+      if (!storyMakerId) {
+        return res.status(400).json({ message: "Story maker ID required" });
+      }
 
-      const description = response.choices[0]?.message?.content || "";
-      res.json({ description });
+      // Check if this image already has a description
+      const [existingImage] = await db.select().from(farmImages).where(sql`${farmImages.storyMakerId} = ${storyMakerId}`);
+      
+      let description;
+      
+      if (existingImage && existingImage.analyzedByAI && existingImage.description) {
+        // Use existing description
+        description = existingImage.description;
+        console.log("Using existing image description");
+      } else {
+        // Get new description from OpenAI
+        const response = await openai.chat.completions.create({
+          model: "gpt-4-vision-preview",
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: "Describe this farm animal character for a children's story. Focus on appearance, personality traits, and anything unique about it." },
+                { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
+              ],
+            },
+          ],
+          max_tokens: 300,
+        });
+
+        description = response.choices[0]?.message?.content || "";
+        
+        // Update the database with the new description
+        await db.update(farmImages)
+          .set({ 
+            description: description,
+            analyzedByAI: true
+          })
+          .where(sql`${farmImages.storyMakerId} = ${storyMakerId}`);
+        
+        console.log("Updated image with new AI description");
+      }
+      
+      // Increment the selection count
+      await db.update(farmImages)
+        .set({ 
+          selectionCount: sql`${farmImages.selectionCount} + 1`
+        })
+        .where(sql`${farmImages.storyMakerId} = ${storyMakerId}`);
+
+      res.json({ description, storyMakerId });
     } catch (error: any) {
       console.error("Error analyzing image:", error);
       res.status(500).json({ message: error.message || "Failed to analyze image" });
