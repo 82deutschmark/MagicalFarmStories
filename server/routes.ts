@@ -10,8 +10,13 @@ import { promises as fs } from "fs";
 
 // Initialize OpenAI with server-side API key
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
 });
+
+// Check if API key is missing
+if (!process.env.VITE_OPENAI_API_KEY && !process.env.OPENAI_API_KEY) {
+  console.warn("Warning: No OpenAI API key found in environment variables. Please set VITE_OPENAI_API_KEY in the secrets tool.");
+}
 
 export async function registerRoutes(app: Express) {
   const router = Router();
