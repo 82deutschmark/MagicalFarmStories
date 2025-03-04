@@ -18,6 +18,12 @@ export default function Story() {
   const [storyText, setStoryText] = useState("");
   const [illustration, setIllustration] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [imageDescription, setImageDescription] = useState<string | null>(null);
+  const [character, setCharacter] = useState<any>({
+    id: "",
+    name: "Farm Friend",
+    svg: ""
+  });
   
   // Decode the URL-encoded image path
   const imagePath = characterId ? decodeURIComponent(characterId) : null;
@@ -68,6 +74,24 @@ export default function Story() {
     },
     enabled: !!imageBase64, // Only run query when base64 is available
   });
+
+  // Initialize character from CHARACTERS if it matches, or use default
+  useEffect(() => {
+    if (imagePath) {
+      // Check if the path matches one of the predefined characters
+      const foundCharacter = CHARACTERS.find(c => c.id === imagePath);
+      if (foundCharacter) {
+        setCharacter(foundCharacter);
+      } else {
+        // If it's a custom image, set default values
+        setCharacter({
+          id: imagePath,
+          name: "Farm Friend",
+          svg: `<img src="${imagePath}" alt="Farm Friend" class="w-full h-full object-contain" />`
+        });
+      }
+    }
+  }, [imagePath]);
 
   const generateStoryMutation = useMutation({
     mutationFn: async () => {
