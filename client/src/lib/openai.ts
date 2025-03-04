@@ -1,3 +1,7 @@
+// client/src/lib/constants.ts
+export const API_URL = import.meta.env.VITE_API_URL || ''; //This assumes you have a VITE_API_URL environment variable
+
+
 import { API_URL } from './constants';
 
 interface RunResponse {
@@ -148,7 +152,7 @@ async function runAssistant(threadId: string, assistantId: string): Promise<stri
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        assistant_id: assistantId
+        assistant_id: assistantId,
       }),
     });
 
@@ -156,7 +160,7 @@ async function runAssistant(threadId: string, assistantId: string): Promise<stri
       throw new Error(`Failed to run assistant: ${response.status}`);
     }
 
-    const data = await response.json() as RunResponse;
+    const data = await response.json();
     return data.id;
   } catch (error) {
     console.error("Error running assistant:", error);
