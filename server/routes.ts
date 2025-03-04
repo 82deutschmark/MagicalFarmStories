@@ -43,10 +43,13 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Get 3 random images from database
+  // Get random images from database
   router.get("/api/farm-images", async (req, res) => {
     try {
-      const images = await db.select().from(farmImages).orderBy(sql`RANDOM()`).limit(3);
+      const count = req.query.count ? parseInt(req.query.count as string) : 3;
+      const limit = count > 0 && count <= 10 ? count : 3; // Default to 3, max 10
+      
+      const images = await db.select().from(farmImages).orderBy(sql`RANDOM()`).limit(limit);
       res.json(images);
     } catch (error) {
       console.error("Error fetching farm images:", error);
