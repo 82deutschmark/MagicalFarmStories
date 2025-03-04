@@ -1,0 +1,52 @@
+# Uncle Mark's Magical Farm Storytelling Web App
+
+## Overview
+Uncle Mark's Magical Farm is an interactive web application designed for parents and children. Users select a character, triggering a process where a Base64-encoded image is sent to the OpenAI API to generate a description. Users can then generate a story using OpenAI’s text API and optionally request an illustration via the DALL-E API. The project uses a PostgreSQL database to store images and associated metadata.
+
+## Features
+- Display three random images from a pre-populated PostgreSQL database.
+- Base64 encoding of images upon storage.
+- Dynamic story generation using OpenAI’s API.
+- Illustration generation using the DALL-E API.
+- Robust image metadata management with a unique StoryMakerID, description status, selection count, and additional file info.
+
+## Technology Stack
+- **Frontend:** React
+- **Backend:** Node.js with Express (or a Python framework like Flask/FastAPI)
+- **Database:** PostgreSQL
+- **API Integrations:** OpenAI (for text and image generation)
+
+## Installation & Setup
+1. Clone the repository.
+2. Ensure Replit is configured properly:
+   - The database must be restructured: wipe existing placeholder data.
+   - Import images from `client/public/images` into the PostgreSQL database.
+3. Install dependencies using your package manager (e.g., `npm install`).
+4. Configure environment variables for the OpenAI API key.
+5. Run the development server using `npm start` (or your preferred command).
+
+## Database Structure
+Each image record should include:
+- A unique `StoryMakerID`
+- Base64-encoded image data
+- Original filename, dimensions, and file size
+- Description flag and description text (if processed via OpenAI)
+- Selection count
+- Timestamps for image import and description generation
+
+## Best Practices
+- Use flexible SQL query construction rather than fixed queries (e.g., do not rely solely on `"SELECT * FROM images ORDER BY RANDOM() LIMIT 3;"`).
+- Keep API integration modular and update endpoints as requirements change.
+- Maintain clear documentation and inline comments.
+- Implement thorough testing for frontend, backend, and database interactions.
+- Ensure that the PostgreSQL database is robust and free from placeholder data.
+
+## Contributing
+Contributions are welcome. Please adhere to the coding standards and document any changes in the project log. Ensure that all new features are tested and documented.
+
+## License
+This project is licensed under the MIT License.
+
+---
+
+"MARK BARNEY"
