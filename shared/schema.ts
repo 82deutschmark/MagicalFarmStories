@@ -30,3 +30,13 @@ export const FARM_IMAGES = [
   "/images/animal5.png",
   "/images/animal6.png"
 ];
+
+// Character names for the farm animals
+export const CHARACTERS = [
+  "Clucky the Chicken",
+  "Penny the Pig",
+  "Molly the Cow",
+  "Baxter the Horse",
+  "Woolly the Sheep",
+  "Hoppy the Rabbit"
+];
