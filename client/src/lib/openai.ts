@@ -98,15 +98,34 @@ async function waitForRunCompletion(threadId: string, runId: string, maxRetries 
   throw new Error("Timed out waiting for assistant response");
 }
 
-export async function generateIllustration(storyText: string): Promise<string> {
-  const response = await openai.images.generate({
-    model: "dall-e-3",
-    prompt: `Create a child-friendly, colorful illustration for this story: ${storyText}. 
-      Style: Whimsical, magical farm setting with cute animals.`,
-    n: 1,
-    size: "1024x1024",
-    quality: "standard",
-  });
+import { apiRequest } from "./queryClient";
 
-  return response.data[0].url || "";
+export async function generateIllustration(storyText: string): Promise<string> {
+  try {
+    const response = await apiRequest("POST", "/api/generate-illustration", {
+      storyText
+    });
+    return response.imageUrl || "";
+  } catch (error) {
+    console.error("Error generating illustration:", error);
+    return "";
+  }
+}
+
+export async function generateStory(
+  characterName: string,
+  characterDescription: string,
+  additionalPrompt: string
+): Promise<string> {
+  try {
+    const response = await apiRequest("POST", "/api/generate-story", {
+      characterName,
+      characterDescription,
+      additionalPrompt
+    });
+    return response.story || "";
+  } catch (error) {
+    console.error("Error generating story:", error);
+    return "";
+  }
 }

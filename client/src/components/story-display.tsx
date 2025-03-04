@@ -3,7 +3,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CHARACTERS } from "@shared/schema";
 
 interface StoryDisplayProps {
-  character: typeof CHARACTERS[number];
+  character: {
+    id: string;
+    name: string;
+    svg: string;
+  };
   story: string;
   illustration: string | null;
   onGenerateIllustration: () => void;

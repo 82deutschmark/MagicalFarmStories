@@ -24,10 +24,10 @@ export default function Story() {
     name: "Farm Friend",
     svg: ""
   });
-  
+
   // Decode the URL-encoded image path
   const imagePath = characterId ? decodeURIComponent(characterId) : null;
-  
+
   if (!imagePath) {
     return <div>Image not found</div>;
   }
@@ -38,7 +38,7 @@ export default function Story() {
       try {
         const response = await fetch(imagePath);
         const blob = await response.blob();
-        
+
         return new Promise<string>((resolve) => {
           const reader = new FileReader();
           reader.onloadend = () => {
@@ -60,19 +60,23 @@ export default function Story() {
         return null;
       }
     };
-    
+
     convertImageToBase64();
   }, [imagePath, toast]);
 
-  const { data: imageDescription, isLoading: isAnalyzing } = useQuery({
+  const { data: analyzedDescription, isLoading: isAnalyzing } = useQuery({
     queryKey: ['/api/analyze-image', imagePath],
     queryFn: async () => {
       if (!imageBase64) {
-        throw new Error("Image not loaded yet");
+        return "";
       }
-      return analyzeCharacterImage(imageBase64);
+      // Use apiRequest instead of direct OpenAI calls from the client
+      const response = await apiRequest("POST", "/api/analyze-image", { imageBase64 });
+      const description = response.description || "";
+      setImageDescription(description);
+      return description;
     },
-    enabled: !!imageBase64, // Only run query when base64 is available
+    enabled: !!imageBase64
   });
 
   // Initialize character from CHARACTERS if it matches, or use default
@@ -97,7 +101,7 @@ export default function Story() {
     mutationFn: async () => {
       const story = await generateStory(
         character.name,
-        imageDescription || "",
+        analyzedDescription || "",
         additionalPrompt
       );
       setStoryText(story);
@@ -137,9 +141,9 @@ export default function Story() {
           <div className="mb-6">
             <h2 className="text-2xl font-bold mb-4">Create Your Story with {character.name}</h2>
             <div className="mb-4" dangerouslySetInnerHTML={{ __html: character.svg }} />
-            
-            {imageDescription && (
-              <p className="text-gray-600 italic mb-4">{imageDescription}</p>
+
+            {analyzedDescription && (
+              <p className="text-gray-600 italic mb-4">{analyzedDescription}</p>
             )}
 
             <Textarea
