@@ -1,13 +1,17 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
 import CharacterSelect from "@/components/character-select";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function Home() {
   const [, setLocation] = useLocation();
 
   const handleProceed = (imagePath: string) => {
-    // Navigate to the story tuning page with the selected image
-    setLocation(`/story/tune/${encodeURIComponent(imagePath)}`);
+    if (imagePath) {
+      // Encode the image path in the URL
+      setLocation(`/story/${encodeURIComponent(imagePath)}`);
+    }
   };
 
   return (
@@ -23,9 +27,8 @@ export default function Home() {
               Choose Your Farm Friend!
             </h2>
 
-            <div className="flex justify-center">
-              <CharacterSelect onProceed={handleProceed} />
-            </div>
+            <CharacterSelect onProceed={handleProceed} />
+
           </CardContent>
         </Card>
       </div>
