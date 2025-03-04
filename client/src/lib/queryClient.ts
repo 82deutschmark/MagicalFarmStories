@@ -1,5 +1,4 @@
-
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,14 +30,14 @@ export async function apiRequest<T>(
 
     console.log(`Making ${method} request to: ${url}`);
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       console.error(`API error: ${response.status} ${response.statusText}`);
       const errorText = await response.text();
       console.error(`Error details: ${errorText}`);
       throw new Error(`API error: ${response.status} ${response.statusText}`);
     }
-    
+
     // Check if the response is empty
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
@@ -62,29 +61,34 @@ export async function apiRequest<T>(
   }
 }
 
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
-
 async function throwIfResNotOk(res: Response) {
+  let error: string | undefined = undefined
+
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    try {
+      error = await res.text()
+    } catch (e) {}
+
+    throw Error(`${res.status} ${res.statusText} ${error ?? ""}`)
   }
 }
 
-export async function apiRequest(
-  method: string,
-  url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
-  const res = await fetch(url, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
+export async function getJson<T>(url: string): Promise<T> {
+  const res = await fetch(url)
+  await throwIfResNotOk(res)
+  return await res.json()
+}
 
-  await throwIfResNotOk(res);
-  return res;
+export async function postJson<T>(url: string, body: any): Promise<T> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  })
+  await throwIfResNotOk(res)
+  return await res.json()
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
@@ -104,18 +108,3 @@ export const getQueryFn: <T>(options: {
     await throwIfResNotOk(res);
     return await res.json();
   };
-
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
-    },
-    mutations: {
-      retry: false,
-    },
-  },
-});
