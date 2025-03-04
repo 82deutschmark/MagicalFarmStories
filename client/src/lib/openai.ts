@@ -52,6 +52,28 @@ export async function analyzeCharacterImage(imageBase64: string, storyMakerId: s
   }
 }
 
+export async function generateIllustration(storyText: string): Promise<string> {
+  try {
+    const response = await fetch(`${API_URL}/api/generate-illustration`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ storyText }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to generate illustration");
+    }
+
+    const data = await response.json();
+    return data.imageUrl;
+  } catch (error) {
+    console.error("Error generating illustration:", error);
+    throw error;
+  }
+}
+
 export async function generateStory(
   characterName: string,
   characterDescription: string,

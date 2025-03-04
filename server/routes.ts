@@ -19,6 +19,7 @@ if (!process.env.VITE_OPENAI_API_KEY && !process.env.OPENAI_API_KEY) {
 }
 
 // The assistant ID to use for story generation
+const ASSISTANT_ID = process.env.VITE_ASSISTANT_ID || process.env.ASSISTANT_ID;
 const ASSISTANT_ID = "asst_ZExL77IkNDUHucztPYSeHnLw";
 
 import { createTables, dropTables, printTableInfo } from "./debugDb";
@@ -154,6 +155,39 @@ export async function registerRoutes(app: Express) {
     } catch (error: any) {
       console.error("Error analyzing image:", error);
       res.status(500).json({ message: error.message || "Failed to analyze image" });
+    }
+  });
+
+  // API endpoint to generate an illustration for a story
+  router.post("/api/generate-illustration", async (req, res) => {
+    try {
+      const { storyText } = req.body;
+      
+      if (!storyText) {
+        return res.status(400).json({ message: "Story text is required" });
+      }
+      
+      // Generate an illustration using DALL-E
+      const response = await openai.images.generate({
+        model: "dall-e-3",
+        prompt: `Create a child-friendly, colorful illustration for this children's story: ${storyText.substring(0, 800)}`,
+        n: 1,
+        size: "1024x1024",
+      });
+      
+      const imageUrl = response.data[0]?.url;
+      
+      if (!imageUrl) {
+        throw new Error("Failed to generate illustration");
+      }
+      
+      res.json({ imageUrl });
+    } catch (error: any) {
+      console.error("Error generating illustration:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to generate illustration",
+        error: error.toString()
+      });
     }
   });
 
