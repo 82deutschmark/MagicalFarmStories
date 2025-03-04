@@ -1,7 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { FarmImage } from "@shared/schema";
@@ -13,61 +12,55 @@ interface CharacterSelectProps {
 export default function CharacterSelect({ onProceed }: CharacterSelectProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  // Fetch images from database
-  const { data: farmImages = [], isLoading } = useQuery<FarmImage[]>({
+  // Fetch random images from database
+  const { data: farmImages = [], isLoading, refetch } = useQuery<FarmImage[]>({
     queryKey: ['/api/farm-images'],
-    queryFn: () => apiRequest<FarmImage[]>("GET", "/api/farm-images")
-  });
-
-  // Get a random image from the available images
-  const getRandomImage = () => {
-    if (farmImages.length === 0) return;
-    const randomIndex = Math.floor(Math.random() * farmImages.length);
-    setSelectedImage(farmImages[randomIndex].imageUrl);
-  };
-
-  // Get initial random image on component mount
-  useEffect(() => {
-    if (farmImages.length > 0) {
-      getRandomImage();
+    queryFn: async () => {
+      const response = await apiRequest<FarmImage[]>("GET", "/api/farm-images");
+      console.log("Fetched images:", response); // Debug log
+      return response;
     }
-  }, [farmImages]);
+  });
 
   if (isLoading) {
     return <div>Loading farm friends...</div>;
   }
 
   return (
-    <div className="flex flex-col items-center gap-6">
-      {selectedImage && (
-        <Card className="p-4 relative hover:shadow-lg transition-shadow">
-          <img
-            src={selectedImage}
-            alt="Farm Animal"
-            className="w-64 h-64 object-cover rounded-lg"
-          />
-          <div className="absolute bottom-4 right-4">
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={getRandomImage}
-              className="bg-white/90 hover:bg-white"
-              title="Get another random friend"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          </div>
-        </Card>
-      )}
+    <div className="w-full">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        {farmImages.map((image) => (
+          <Card 
+            key={image.id}
+            className={`cursor-pointer transition-all duration-200 p-4 ${
+              selectedImage === image.imageUrl ? 'ring-2 ring-primary' : 'hover:shadow-lg'
+            }`}
+            onClick={() => setSelectedImage(image.imageUrl)}
+          >
+            <img
+              src={image.imageUrl}
+              alt="Farm Animal"
+              className="w-full aspect-square object-cover rounded-lg"
+            />
+          </Card>
+        ))}
+      </div>
 
-      <Button 
-        onClick={() => selectedImage && onProceed(selectedImage)}
-        disabled={!selectedImage}
-        size="lg"
-        className="w-full max-w-xs"
-      >
-        Describe This Character
-      </Button>
+      <div className="flex justify-between items-center">
+        <Button 
+          variant="outline"
+          onClick={() => refetch()}
+        >
+          Show Different Animals
+        </Button>
+
+        <Button 
+          onClick={() => selectedImage && onProceed(selectedImage)}
+          disabled={!selectedImage}
+        >
+          Describe This Character
+        </Button>
+      </div>
     </div>
   );
 }
