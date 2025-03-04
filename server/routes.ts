@@ -43,13 +43,45 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Get random images from database
+  // Get farm images from database with flexible options
   router.get("/api/farm-images", async (req, res) => {
     try {
+      // Extract query parameters
       const count = req.query.count ? parseInt(req.query.count as string) : 3;
       const limit = count > 0 && count <= 10 ? count : 3; // Default to 3, max 10
+      const orderBy = req.query.orderBy as string || 'random'; // Default to random ordering
+      const excludeIds = req.query.excludeIds ? (req.query.excludeIds as string).split(',').map(id => parseInt(id)) : [];
+      const character = req.query.character as string;
       
-      const images = await db.select().from(farmImages).orderBy(sql`RANDOM()`).limit(limit);
+      // Start building the query
+      let query = db.select().from(farmImages);
+      
+      // Apply filters based on query parameters
+      if (excludeIds.length > 0) {
+        query = query.where(sql`${farmImages.id} NOT IN (${excludeIds.join(',')})`);
+      }
+      
+      if (character) {
+        // If we have character filtering implemented in the future
+        // query = query.where(sql`${farmImages.character} = ${character}`);
+      }
+      
+      // Apply ordering
+      if (orderBy === 'random') {
+        query = query.orderBy(sql`RANDOM()`);
+      } else if (orderBy === 'newest') {
+        query = query.orderBy(sql`${farmImages.createdAt} DESC`);
+      } else if (orderBy === 'popular') {
+        query = query.orderBy(sql`${farmImages.selectionCount} DESC`);
+      }
+      
+      // Apply limit
+      query = query.limit(limit);
+      
+      // Execute the query
+      const images = await query;
+      console.log(`Fetched ${images.length} images with parameters:`, { count, orderBy, excludeIds, character });
+      
       res.json(images);
     } catch (error) {
       console.error("Error fetching farm images:", error);
