@@ -60,7 +60,11 @@ async function initializeDatabase() {
 }
 
 // Run if this file is executed directly
-if (require.main === module) {
+// Using ES module syntax to check if file is run directly
+import { fileURLToPath } from 'url';
+const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
+
+if (isMainModule) {
   initializeDatabase()
     .then(() => {
       console.log('Database initialization script finished.');
