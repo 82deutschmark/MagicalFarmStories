@@ -115,13 +115,17 @@ export default function CharacterSelect({ onProceed }: CharacterSelectProps) {
 
             {image.imageBase64 ? (
               <div className="relative h-64 overflow-hidden">
-                <img 
-                  src={`data:image/jpeg;base64,${image.imageBase64}`} 
+                <img
+                  src={image.imageBase64 ? `data:image/jpeg;base64,${image.imageBase64}` : 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" fill="%23f0f0f0"/><text x="50%" y="50%" font-family="Arial" font-size="24" text-anchor="middle" fill="%23999">Missing Image</text></svg>'}
                   alt={`Farm character ${index + 1}`}
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     console.error(`Error loading image ${index}`, e);
-                    console.log("Image data length:", image.imageBase64 ? image.imageBase64.length : 0);
+                    console.log("Image details:", {
+                      storyMakerId: image.storyMakerId || 'unknown',
+                      dataLength: image.imageBase64 ? image.imageBase64.length : 0,
+                      hasData: !!image.imageBase64
+                    });
                     e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" fill="%23f0f0f0"/><text x="50%" y="50%" font-family="Arial" font-size="24" text-anchor="middle" fill="%23999">Image Error</text></svg>';
                   }}
                 />

@@ -1,3 +1,67 @@
+
+import { QueryClient } from "@tanstack/react-query";
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+export async function apiRequest<T>(
+  method: "GET" | "POST" | "PUT" | "DELETE",
+  url: string,
+  body?: any
+): Promise<T> {
+  try {
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+
+    const options: RequestInit = {
+      method,
+      headers,
+    };
+
+    if (body) {
+      options.body = JSON.stringify(body);
+    }
+
+    console.log(`Making ${method} request to: ${url}`);
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      console.error(`API error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`Error details: ${errorText}`);
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+    
+    // Check if the response is empty
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      const jsonResponse = await response.json();
+      console.log(`API response received (JSON):`, jsonResponse);
+      return jsonResponse as T;
+    } else {
+      const textResponse = await response.text();
+      console.log(`API response received (text): ${textResponse}`);
+      try {
+        // Try to parse as JSON anyway
+        return JSON.parse(textResponse) as T;
+      } catch (e) {
+        console.error("Could not parse response as JSON:", e);
+        throw new Error("Invalid response format");
+      }
+    }
+  } catch (error) {
+    console.error("API request failed:", error);
+    throw error;
+  }
+}
+
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
