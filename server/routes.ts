@@ -18,6 +18,9 @@ if (!process.env.VITE_OPENAI_API_KEY && !process.env.OPENAI_API_KEY) {
   console.warn("Warning: No OpenAI API key found in environment variables. Please set VITE_OPENAI_API_KEY in the secrets tool.");
 }
 
+// The assistant ID to use for story generation
+const ASSISTANT_ID = "asst_ZExL77IkNDUHucztPYSeHnLw";
+
 import { createTables, dropTables, printTableInfo } from "./debugDb";
 import multer from "multer";
 import path from "path";
@@ -112,7 +115,7 @@ export async function registerRoutes(app: Express) {
         description = existingImage.description;
         console.log("Using existing image description");
       } else {
-        // Get new description from OpenAI
+        // Get new description from OpenAI (using direct API call, not Assistants API)
         const response = await openai.chat.completions.create({
           model: "gpt-4-vision-preview",
           messages: [
@@ -151,6 +154,106 @@ export async function registerRoutes(app: Express) {
     } catch (error: any) {
       console.error("Error analyzing image:", error);
       res.status(500).json({ message: error.message || "Failed to analyze image" });
+    }
+  });
+
+  // OpenAI Assistants API endpoints
+  
+  // Create a new thread
+  router.post("/api/openai/threads", async (req, res) => {
+    try {
+      const thread = await openai.beta.threads.create();
+      console.log("Created new thread:", thread.id);
+      res.json(thread);
+    } catch (error: any) {
+      console.error("Error creating thread:", error);
+      res.status(500).json({ message: error.message || "Failed to create thread" });
+    }
+  });
+  
+  // Add a message to a thread
+  router.post("/api/openai/threads/:threadId/messages", async (req, res) => {
+    try {
+      const { threadId } = req.params;
+      const { role, content } = req.body;
+      
+      if (!content) {
+        return res.status(400).json({ message: "Message content is required" });
+      }
+      
+      const message = await openai.beta.threads.messages.create(
+        threadId,
+        {
+          role: role || "user",
+          content
+        }
+      );
+      
+      console.log(`Added ${role || "user"} message to thread ${threadId}`);
+      res.json(message);
+    } catch (error: any) {
+      console.error("Error adding message to thread:", error);
+      res.status(500).json({ message: error.message || "Failed to add message to thread" });
+    }
+  });
+  
+  // Run the assistant on a thread
+  router.post("/api/openai/threads/:threadId/runs", async (req, res) => {
+    try {
+      const { threadId } = req.params;
+      const { assistant_id } = req.body;
+      
+      if (!assistant_id) {
+        return res.status(400).json({ message: "Assistant ID is required" });
+      }
+      
+      const run = await openai.beta.threads.runs.create(
+        threadId,
+        {
+          assistant_id
+        }
+      );
+      
+      console.log(`Started assistant run ${run.id} on thread ${threadId}`);
+      res.json(run);
+    } catch (error: any) {
+      console.error("Error running assistant:", error);
+      res.status(500).json({ message: error.message || "Failed to run assistant" });
+    }
+  });
+  
+  // Check the status of an assistant run
+  router.get("/api/openai/threads/:threadId/runs/:runId", async (req, res) => {
+    try {
+      const { threadId, runId } = req.params;
+      
+      const run = await openai.beta.threads.runs.retrieve(
+        threadId,
+        runId
+      );
+      
+      console.log(`Run ${runId} status: ${run.status}`);
+      res.json(run);
+    } catch (error: any) {
+      console.error("Error checking run status:", error);
+      res.status(500).json({ message: error.message || "Failed to check run status" });
+    }
+  });
+  
+  // Get messages from a thread
+  router.get("/api/openai/threads/:threadId/messages", async (req, res) => {
+    try {
+      const { threadId } = req.params;
+      
+      const messagesList = await openai.beta.threads.messages.list(
+        threadId
+      );
+      
+      console.log(`Retrieved messages from thread ${threadId}`);
+      res.json({ messages: messagesList.data });
+    } catch (error: any) {
+      console.error("Error retrieving messages:", error);
+      res.status(500).json({ message: error.message || "Failed to retrieve messages" });
     }
   });
 
