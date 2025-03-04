@@ -1,7 +1,3 @@
-// client/src/lib/constants.ts
-export const API_URL = import.meta.env.VITE_API_URL || ''; //This assumes you have a VITE_API_URL environment variable
-
-
 import { API_URL } from './constants';
 
 interface RunResponse {
