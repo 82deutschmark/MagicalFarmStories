@@ -256,16 +256,38 @@ const pollRunStatus = async (threadId: string, runId: string, maxAttempts = 20) 
   for (let i = 0; i < maxAttempts; i++) {
     const response = await axios.get(`/api/openai/threads/${threadId}/runs/${runId}`);
     const run = response.data;
-    
+
     if (run.status === 'completed') {
       return run;
     } else if (run.status === 'failed' || run.status === 'cancelled') {
       throw new Error(`Run ${runId} ${run.status}`);
     }
-    
+
     // Wait for 1 second before polling again
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  
+
   throw new Error('Max polling attempts reached');
 };
+
+export async function generateIllustration(storyText: string): Promise<string> {
+  try {
+    const response = await fetch('/api/generate-illustration', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ storyText }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to generate illustration: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.imageUrl;
+  } catch (error) {
+    console.error('Error generating illustration:', error);
+    throw error;
+  }
+}
