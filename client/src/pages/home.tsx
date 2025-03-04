@@ -1,19 +1,13 @@
-
-import { useState } from "react";
 import { useLocation } from "wouter";
 import CharacterSelect from "@/components/character-select";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function Home() {
   const [, setLocation] = useLocation();
-  const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null);
 
-  const handleStartStory = () => {
-    if (selectedCharacter) {
-      // Encode the image path in the URL, we'll use the actual path to load and encode the image
-      setLocation(`/story/${encodeURIComponent(selectedCharacter)}`);
-    }
+  const handleProceed = (imagePath: string) => {
+    // Navigate to the story tuning page with the selected image
+    setLocation(`/story/tune/${encodeURIComponent(imagePath)}`);
   };
 
   return (
@@ -22,28 +16,15 @@ export default function Home() {
         <h1 className="text-4xl md:text-6xl font-bold text-center mb-8 bg-gradient-to-r from-green-600 to-blue-600 text-transparent bg-clip-text">
           Uncle Mark's Magical Farm
         </h1>
-        
+
         <Card className="bg-white/80 backdrop-blur">
           <CardContent className="p-8">
             <h2 className="text-2xl font-semibold text-center mb-6">
               Choose Your Farm Friend!
             </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <CharacterSelect
-                selectedCharacter={selectedCharacter}
-                onSelect={setSelectedCharacter}
-              />
-            </div>
-            
+
             <div className="flex justify-center">
-              <Button
-                className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white px-8 py-2 text-lg"
-                onClick={handleStartStory}
-                disabled={!selectedCharacter}
-              >
-                Start Your Adventure!
-              </Button>
+              <CharacterSelect onProceed={handleProceed} />
             </div>
           </CardContent>
         </Card>

@@ -1,42 +1,71 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { FARM_IMAGES } from "@shared/schema";
-import Image from "next/image";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import type { FarmImage } from "@shared/schema";
 
 interface CharacterSelectProps {
-  selectedCharacter: string | null;
-  onSelect: (imagePath: string) => void;
+  onProceed: (imagePath: string) => void;
 }
 
-export default function CharacterSelect({ 
-  selectedCharacter, 
-  onSelect,
-}: CharacterSelectProps) {
-  const [randomImages, setRandomImages] = useState<string[]>([]);
+export default function CharacterSelect({ onProceed }: CharacterSelectProps) {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  // Select 3 random images when component mounts
+  // Fetch images from database
+  const { data: farmImages, refetch } = useQuery<FarmImage[]>({
+    queryKey: ['/api/farm-images'],
+    queryFn: async () => {
+      const response = await apiRequest<FarmImage[]>("GET", "/api/farm-images");
+      return response;
+    },
+  });
+
+  // Get a random image from the available images
+  const getRandomImage = () => {
+    if (!farmImages || farmImages.length === 0) return null;
+    const randomIndex = Math.floor(Math.random() * farmImages.length);
+    const randomImage = farmImages[randomIndex];
+    setSelectedImage(randomImage.imageUrl);
+  };
+
+  // Get initial random image on component mount
   useEffect(() => {
-    const shuffled = [...FARM_IMAGES].sort(() => 0.5 - Math.random());
-    setRandomImages(shuffled.slice(0, 3));
-  }, []);
+    if (farmImages && farmImages.length > 0) {
+      getRandomImage();
+    }
+  }, [farmImages]);
 
   return (
-    <>
-      {randomImages.map((imagePath, index) => (
-        <div 
-          key={index}
-          className={`relative cursor-pointer rounded-lg overflow-hidden transition-all duration-200 ${
-            selectedCharacter === imagePath ? 'ring-4 ring-blue-500 scale-105' : 'hover:scale-105'
-          }`}
-          onClick={() => onSelect(imagePath)}
-        >
+    <div className="flex flex-col items-center gap-6">
+      {selectedImage && (
+        <Card className="p-4 relative">
           <img
-            src={imagePath}
-            alt={`Farm friend ${index + 1}`}
-            className="w-full h-auto aspect-square object-cover"
+            src={selectedImage}
+            alt="Farm Animal"
+            className="w-64 h-64 object-cover rounded-lg"
           />
-        </div>
-      ))}
-    </>
+          <div className="absolute bottom-4 right-4 flex gap-2">
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={getRandomImage}
+              title="Get another random image"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      <Button 
+        onClick={() => selectedImage && onProceed(selectedImage)}
+        disabled={!selectedImage}
+        className="w-full max-w-xs"
+      >
+        Describe This Character
+      </Button>
+    </div>
   );
 }

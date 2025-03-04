@@ -7,6 +7,7 @@ import { insertStorySchema } from "@shared/schema";
 import { z } from "zod";
 import path from "path";
 import { promises as fs } from "fs";
+import { insertFarmImageSchema } from "@shared/schema";
 
 // Initialize OpenAI with server-side API key
 const openai = new OpenAI({
@@ -121,6 +122,31 @@ export async function registerRoutes(app: Express) {
       res.status(500).json({ message: "Failed to fetch stories" });
     }
   });
+
+  // Farm Images endpoints
+  router.get("/api/farm-images", async (req, res) => {
+    try {
+      const images = await storage.getAllFarmImages();
+      res.json(images);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch farm images" });
+    }
+  });
+
+  router.post("/api/farm-images", async (req, res) => {
+    try {
+      const data = insertFarmImageSchema.parse(req.body);
+      const image = await storage.createFarmImage(data);
+      res.json(image);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid farm image data" });
+        return;
+      }
+      res.status(500).json({ message: "Failed to save farm image" });
+    }
+  });
+
 
   // Register our API routes
   app.use(router);
