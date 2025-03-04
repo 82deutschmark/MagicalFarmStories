@@ -18,7 +18,8 @@ export default function CharacterSelect({ onProceed }: CharacterSelectProps) {
     queryFn: async () => {
       const response = await apiRequest<FarmImage[]>("GET", "/api/farm-images");
       console.log("Fetched images:", response); // Debug log
-      return response;
+      // Ensure we're returning an array
+      return Array.isArray(response) ? response : [];
     }
   });
 
