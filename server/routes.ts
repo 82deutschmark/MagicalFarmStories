@@ -23,6 +23,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
+import AdmZip from "adm-zip";
 
 export async function registerRoutes(app: Express) {
   const router = Router();
@@ -31,10 +32,10 @@ export async function registerRoutes(app: Express) {
   const storage = multer.memoryStorage();
   const upload = multer({ 
     storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    limits: { fileSize: 50 * 1024 * 1024 }, // Increased to 50MB for ZIP files
     fileFilter: (req, file, cb) => {
-      // Accept only image files
-      if (file.mimetype.startsWith('image/')) {
+      // Accept image files and ZIP files
+      if (file.mimetype.startsWith('image/') || file.mimetype === 'application/zip') {
         cb(null, true);
       } else {
         cb(null, false);
@@ -169,7 +170,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Image upload route
+  // Single image upload route (keeping for backward compatibility)
   router.post("/api/debug/upload-image", upload.single('image'), async (req, res) => {
     try {
       if (!req.file) {
@@ -198,6 +199,93 @@ export async function registerRoutes(app: Express) {
       res.status(500).json({ message: "Failed to upload image", error: String(error) });
     }
   });
+  
+  // Multiple files upload route (handles both multiple images and ZIP files)
+  router.post("/api/debug/upload-multiple", upload.array('images', 10), async (req, res) => {
+    try {
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ message: "No files provided" });
+      }
+      
+      const files = req.files as Express.Multer.File[];
+      const results = [];
+      let totalProcessed = 0;
+      
+      for (const file of files) {
+        // If it's a ZIP file, extract and process its contents
+        if (file.mimetype === 'application/zip') {
+          try {
+            const zip = new AdmZip(file.buffer);
+            const zipEntries = zip.getEntries();
+            
+            for (const entry of zipEntries) {
+              if (!entry.isDirectory && isImageFile(entry.name)) {
+                const entryData = entry.getData();
+                const base64Data = entryData.toString('base64');
+                const storyMakerId = uuidv4();
+                
+                await db.insert(farmImages).values({
+                  storyMakerId,
+                  imageBase64: base64Data,
+                  originalFileName: entry.name,
+                  analyzedByAI: false,
+                  selectionCount: 0
+                });
+                
+                results.push({
+                  fileName: entry.name,
+                  storyMakerId,
+                  source: `Extracted from ${file.originalname}`
+                });
+                
+                totalProcessed++;
+              }
+            }
+          } catch (zipError) {
+            console.error("Error processing ZIP file:", zipError);
+            results.push({
+              fileName: file.originalname,
+              error: "Failed to process ZIP file"
+            });
+          }
+        } 
+        // If it's an image file, process it directly
+        else if (file.mimetype.startsWith('image/')) {
+          const storyMakerId = uuidv4();
+          const base64Data = file.buffer.toString('base64');
+          
+          await db.insert(farmImages).values({
+            storyMakerId,
+            imageBase64: base64Data,
+            originalFileName: file.originalname,
+            analyzedByAI: false,
+            selectionCount: 0
+          });
+          
+          results.push({
+            fileName: file.originalname,
+            storyMakerId
+          });
+          
+          totalProcessed++;
+        }
+      }
+      
+      res.json({
+        message: `Successfully processed ${totalProcessed} images`,
+        results
+      });
+    } catch (error) {
+      console.error("Error uploading files:", error);
+      res.status(500).json({ message: "Failed to upload files", error: String(error) });
+    }
+  });
+  
+  // Helper function to check if a file is an image based on extension
+  function isImageFile(fileName: string): boolean {
+    const ext = path.extname(fileName).toLowerCase();
+    return ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'].includes(ext);
+  }
 
   // Register our API routes
   app.use(router);
