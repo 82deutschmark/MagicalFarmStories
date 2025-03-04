@@ -1,7 +1,12 @@
-
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
+
+// Add the missing fetchFarmImages function
+const fetchFarmImages = async () => {
+  const response = await axios.get('/api/farm-images');
+  return response.data;
+};
 
 interface FarmImage {
   id: number;
@@ -13,18 +18,6 @@ interface FarmImage {
   selectionCount: number;
   createdAt: string;
 }
-
-export const fetchFarmImages = async (count = 3) => {
-  try {
-    console.log('Fetching farm images...');
-    const response = await axios.get(`/api/farm-images?count=${count}`);
-    console.log('Farm images response:', response.data);
-    return response.data as FarmImage[];
-  } catch (error) {
-    console.error('Error fetching farm images:', error);
-    throw error;
-  }
-};
 
 const ImageFetcher: React.FC = () => {
   const { data: images, isLoading, isError, error, refetch } = useQuery({
