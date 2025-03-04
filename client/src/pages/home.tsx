@@ -6,13 +6,18 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export default function Home() {
   const [, setLocation] = useLocation();
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const handleProceed = (imagePath: string) => {
+    console.log("Selected image path:", imagePath);
     if (imagePath) {
       // Encode the image path in the URL
       setLocation(`/story/${encodeURIComponent(imagePath)}`);
     }
   };
+  
+  // Log when the component mounts to verify rendering
+  console.log("Home component rendered");
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-blue-50 p-8">

@@ -21,6 +21,22 @@ export default function CharacterSelect({ onProceed }: CharacterSelectProps) {
     queryFn: async () => {
       const response = await apiRequest<FarmImage[]>("GET", "/api/farm-images");
       console.log("Fetched images:", response); // Debug log
+      
+      // Add more detailed logging
+      if (Array.isArray(response)) {
+        console.log(`Retrieved ${response.length} images`);
+        response.forEach((img, i) => {
+          console.log(`Image ${i+1}:`, {
+            id: img.id,
+            storyMakerId: img.storyMakerId,
+            hasImageData: !!img.imageBase64,
+            imageDataLength: img.imageBase64 ? img.imageBase64.length : 0
+          });
+        });
+      } else {
+        console.error("Response is not an array:", response);
+      }
+      
       // Ensure we're returning an array
       return Array.isArray(response) ? response : [];
     }
@@ -103,6 +119,10 @@ export default function CharacterSelect({ onProceed }: CharacterSelectProps) {
                   src={`data:image/jpeg;base64,${image.imageBase64}`} 
                   alt={`Farm character ${index + 1}`}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error(`Error loading image ${index}`, e);
+                    e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" fill="%23f0f0f0"/><text x="50%" y="50%" font-family="Arial" font-size="24" text-anchor="middle" fill="%23999">Image Error</text></svg>';
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
               </div>
