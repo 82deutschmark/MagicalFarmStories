@@ -19,8 +19,7 @@ if (!process.env.VITE_OPENAI_API_KEY && !process.env.OPENAI_API_KEY) {
 }
 
 // The assistant ID to use for story generation
-const ASSISTANT_ID = process.env.VITE_ASSISTANT_ID || process.env.ASSISTANT_ID;
-const ASSISTANT_ID = "asst_ZExL77IkNDUHucztPYSeHnLw";
+const ASSISTANT_ID = process.env.VITE_ASSISTANT_ID || process.env.ASSISTANT_ID || "asst_ZExL77IkNDUHucztPYSeHnLw";
 
 import { createTables, dropTables, printTableInfo } from "./debugDb";
 import multer from "multer";
