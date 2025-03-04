@@ -1,13 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CHARACTERS } from "@shared/schema";
 
 interface StoryDisplayProps {
-  character: {
-    id: string;
-    name: string;
-    svg: string;
-  };
+  characterImage: string;
   story: string;
   illustration: string | null;
   onGenerateIllustration: () => void;
@@ -17,7 +12,7 @@ interface StoryDisplayProps {
 }
 
 export default function StoryDisplay({
-  character,
+  characterImage,
   story,
   illustration,
   onGenerateIllustration,
@@ -30,9 +25,9 @@ export default function StoryDisplay({
       <CardContent className="p-6">
         <div className="prose max-w-none mb-6">
           <h2 className="text-2xl font-bold mb-4">
-            {character.name}'s Magical Adventure
+            A Magical Farm Adventure
           </h2>
-          
+
           <div className="whitespace-pre-wrap">{story}</div>
         </div>
 

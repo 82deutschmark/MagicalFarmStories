@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import StoryDisplay from "@/components/story-display";
-import { CHARACTERS } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function Story() {
@@ -19,11 +18,6 @@ export default function Story() {
   const [illustration, setIllustration] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imageDescription, setImageDescription] = useState<string | null>(null);
-  const [character, setCharacter] = useState<any>({
-    id: "",
-    name: "Farm Friend",
-    svg: ""
-  });
 
   // Decode the URL-encoded image path
   const imagePath = characterId ? decodeURIComponent(characterId) : null;
@@ -70,7 +64,6 @@ export default function Story() {
       if (!imageBase64) {
         return "";
       }
-      // Use apiRequest instead of direct OpenAI calls from the client
       const response = await apiRequest("POST", "/api/analyze-image", { imageBase64 });
       const description = response.description || "";
       setImageDescription(description);
@@ -79,28 +72,10 @@ export default function Story() {
     enabled: !!imageBase64
   });
 
-  // Initialize character from CHARACTERS if it matches, or use default
-  useEffect(() => {
-    if (imagePath) {
-      // Check if the path matches one of the predefined characters
-      const foundCharacter = CHARACTERS.find(c => c.id === imagePath);
-      if (foundCharacter) {
-        setCharacter(foundCharacter);
-      } else {
-        // If it's a custom image, set default values
-        setCharacter({
-          id: imagePath,
-          name: "Farm Friend",
-          svg: `<img src="${imagePath}" alt="Farm Friend" class="w-full h-full object-contain" />`
-        });
-      }
-    }
-  }, [imagePath]);
-
   const generateStoryMutation = useMutation({
     mutationFn: async () => {
       const story = await generateStory(
-        character.name,
+        "Farm Friend",
         analyzedDescription || "",
         additionalPrompt
       );
@@ -120,8 +95,8 @@ export default function Story() {
   const saveStoryMutation = useMutation({
     mutationFn: async () => {
       return apiRequest("POST", "/api/stories", {
-        character: character.id,
-        characterImage: character.svg,
+        character: imagePath,
+        characterImage: imagePath,
         storyText,
         illustration
       });
@@ -139,8 +114,8 @@ export default function Story() {
       <div className="max-w-4xl mx-auto space-y-8">
         <Card className="p-6">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold mb-4">Create Your Story with {character.name}</h2>
-            <div className="mb-4" dangerouslySetInnerHTML={{ __html: character.svg }} />
+            <h2 className="text-2xl font-bold mb-4">Create Your Story</h2>
+            <img src={imagePath} alt="Selected Farm Friend" className="w-48 h-48 object-cover mb-4 rounded-lg" />
 
             {analyzedDescription && (
               <p className="text-gray-600 italic mb-4">{analyzedDescription}</p>
@@ -163,7 +138,7 @@ export default function Story() {
 
           {storyText && (
             <StoryDisplay
-              character={character}
+              characterImage={imagePath}
               story={storyText}
               illustration={illustration}
               onGenerateIllustration={() => generateIllustrationMutation.mutate()}

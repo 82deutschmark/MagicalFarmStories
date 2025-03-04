@@ -1,4 +1,3 @@
-
 import { pgTable, text, serial, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -29,14 +28,4 @@ export const FARM_IMAGES = [
   "/images/animal4.png",
   "/images/animal5.png",
   "/images/animal6.png"
-];
-
-// Character names for the farm animals
-export const CHARACTERS = [
-  "Clucky the Chicken",
-  "Penny the Pig",
-  "Molly the Cow",
-  "Baxter the Horse",
-  "Woolly the Sheep",
-  "Hoppy the Rabbit"
 ];
