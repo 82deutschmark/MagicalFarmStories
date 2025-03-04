@@ -104,3 +104,29 @@ export async function generateIllustration(storyText: string): Promise<string> {
 
   return response.data[0].url || "";
 }
+
+export async function analyzeCharacterImage(base64Image: string): Promise<string> {
+  const response = await openai.chat.completions.create({
+    model: "gpt-4-vision-preview",
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Describe this farm animal in detail. What kind of animal is it? What does it look like? What might its personality be like? Give it a fun, whimsical description that would appeal to children.",
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:image/png;base64,${base64Image}`,
+            },
+          },
+        ],
+      },
+    ],
+    max_tokens: 300,
+  });
+
+  return response.choices[0]?.message?.content || "";
+}

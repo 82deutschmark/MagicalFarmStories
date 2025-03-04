@@ -1,9 +1,9 @@
+
 import { useState } from "react";
 import { useLocation } from "wouter";
 import CharacterSelect from "@/components/character-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CHARACTERS } from "@shared/schema";
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -11,7 +11,8 @@ export default function Home() {
 
   const handleStartStory = () => {
     if (selectedCharacter) {
-      setLocation(`/story/${selectedCharacter}`);
+      // Encode the image path in the URL, we'll use the actual path to load and encode the image
+      setLocation(`/story/${encodeURIComponent(selectedCharacter)}`);
     }
   };
 
@@ -30,20 +31,18 @@ export default function Home() {
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <CharacterSelect
-                characters={CHARACTERS}
                 selectedCharacter={selectedCharacter}
                 onSelect={setSelectedCharacter}
               />
             </div>
-
-            <div className="text-center">
+            
+            <div className="flex justify-center">
               <Button
-                size="lg"
-                className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
-                disabled={!selectedCharacter}
+                className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white px-8 py-2 text-lg"
                 onClick={handleStartStory}
+                disabled={!selectedCharacter}
               >
-                Start Your Magical Story!
+                Start Your Adventure!
               </Button>
             </div>
           </CardContent>

@@ -17,22 +17,56 @@ export default function Story() {
   const [additionalPrompt, setAdditionalPrompt] = useState("");
   const [storyText, setStoryText] = useState("");
   const [illustration, setIllustration] = useState<string | null>(null);
-
-  const character = CHARACTERS.find(c => c.id === characterId);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
   
-  if (!character) {
-    return <div>Character not found</div>;
+  // Decode the URL-encoded image path
+  const imagePath = characterId ? decodeURIComponent(characterId) : null;
+  
+  if (!imagePath) {
+    return <div>Image not found</div>;
   }
 
-  // Convert SVG to base64
-  const getBase64Image = () => {
-    const base64 = btoa(character.svg);
-    return base64;
-  };
+  // Function to convert image to base64
+  useEffect(() => {
+    const convertImageToBase64 = async () => {
+      try {
+        const response = await fetch(imagePath);
+        const blob = await response.blob();
+        
+        return new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64String = reader.result as string;
+            // Remove the data URL prefix
+            const base64 = base64String.split(',')[1];
+            setImageBase64(base64);
+            resolve(base64);
+          };
+          reader.readAsDataURL(blob);
+        });
+      } catch (error) {
+        console.error("Error converting image to base64:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load image. Please try again.",
+          variant: "destructive",
+        });
+        return null;
+      }
+    };
+    
+    convertImageToBase64();
+  }, [imagePath, toast]);
 
   const { data: imageDescription, isLoading: isAnalyzing } = useQuery({
-    queryKey: ['/api/analyze-image', characterId],
-    queryFn: async () => analyzeCharacterImage(getBase64Image())
+    queryKey: ['/api/analyze-image', imagePath],
+    queryFn: async () => {
+      if (!imageBase64) {
+        throw new Error("Image not loaded yet");
+      }
+      return analyzeCharacterImage(imageBase64);
+    },
+    enabled: !!imageBase64, // Only run query when base64 is available
   });
 
   const generateStoryMutation = useMutation({

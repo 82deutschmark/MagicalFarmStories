@@ -1,3 +1,4 @@
+
 import { pgTable, text, serial, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -20,20 +21,12 @@ export const insertStorySchema = createInsertSchema(stories).pick({
 export type InsertStory = z.infer<typeof insertStorySchema>;
 export type Story = typeof stories.$inferSelect;
 
-export const CHARACTERS = [
-  {
-    id: "cow",
-    name: "Clara the Cow",
-    svg: `<svg viewBox="0 0 100 100"><!-- Friendly cow SVG art here --></svg>`,
-  },
-  {
-    id: "chicken",
-    name: "Charlie the Chicken",
-    svg: `<svg viewBox="0 0 100 100"><!-- Friendly chicken SVG art here --></svg>`,
-  },
-  {
-    id: "pig",
-    name: "Percy the Pig",
-    svg: `<svg viewBox="0 0 100 100"><!-- Friendly pig SVG art here --></svg>`,
-  },
-] as const;
+// Farm images available for selection
+export const FARM_IMAGES = [
+  "/images/animal1.png",
+  "/images/animal2.png", 
+  "/images/animal3.png",
+  "/images/animal4.png",
+  "/images/animal5.png",
+  "/images/animal6.png"
+];
