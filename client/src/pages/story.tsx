@@ -74,8 +74,11 @@ export default function Story() {
 
   const generateStoryMutation = useMutation({
     mutationFn: async () => {
+      // Use the character name from the image description or a default name
+      const characterName = "Farm Friend";
+      
       const story = await generateStory(
-        "Farm Friend",
+        characterName,
         analyzedDescription || "",
         additionalPrompt
       );

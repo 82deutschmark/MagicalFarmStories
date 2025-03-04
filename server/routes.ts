@@ -115,7 +115,7 @@ export async function registerRoutes(app: Express) {
         description = existingImage.description;
         console.log("Using existing image description");
       } else {
-        // Get new description from OpenAI (using direct API call, not Assistants API)
+        // Use the GPT-4 Vision API to analyze the image
         const response = await openai.chat.completions.create({
           model: "gpt-4-vision-preview",
           messages: [
