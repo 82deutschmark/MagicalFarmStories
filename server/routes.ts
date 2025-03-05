@@ -158,6 +158,12 @@ export async function registerRoutes(app: Express) {
         // Clean the base64 data (remove any data URI prefix if present)
         const base64Data = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
         
+        // Check image size before processing - OpenAI has size constraints
+        if (base64Data.length > 10 * 1024 * 1024) { // 10MB as safe limit
+          console.error("Image too large for OpenAI API:", base64Data.length);
+          throw new Error("Image is too large. Please use a smaller image (under 10MB).");
+        }
+        
         // Convert base64 to buffer
         const imageBuffer = Buffer.from(base64Data, 'base64');
         
@@ -172,7 +178,7 @@ export async function registerRoutes(app: Express) {
         console.log("Image uploaded to OpenAI, file ID:", fileId);
 
         // Check image size - OpenAI has size constraints
-        if (imageUrl.length > 20 * 1024 * 1024) { // 20MB limit
+        if (base64Data.length > 20 * 1024 * 1024) { // 20MB limit
           console.error("Image too large for OpenAI API:", imageUrl.length);
           throw new Error("Image is too large. Please use a smaller image (under 20MB).");
         }
