@@ -118,7 +118,7 @@ export async function registerRoutes(app: Express) {
       } else {
         // Use the GPT-4 Vision API to analyze the image
         const response = await openai.chat.completions.create({
-          model: "gpt-4-vision-preview",
+          model: "gpt-4o",
           messages: [
             {
               role: "user",
