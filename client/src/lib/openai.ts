@@ -290,9 +290,14 @@ import axios from 'axios';
 export const analyzeImage = async (imageBase64: string, storyMakerId: string, id?: number) => {
   try {
     // Check if the image is too large - OpenAI has size limits
-    if (imageBase64.length > 20 * 1024 * 1024) { // 20MB limit
-      throw new Error("Image is too large to process. Please use a smaller image (under 20MB).");
+    // Base64 encoding increases size by ~33%, so actual file size is ~75% of the base64 string length
+    const sizeInMB = (imageBase64.length * 0.75) / (1024 * 1024);
+    
+    if (sizeInMB > 4) { // 4MB limit (safer threshold for OpenAI)
+      throw new Error(`Image is too large (${sizeInMB.toFixed(2)}MB) to process. Please use a smaller image (under 4MB).`);
     }
+    
+    console.log(`Image size: ${sizeInMB.toFixed(2)}MB`);
     
     // Normalize the image format - ensure it's in the format OpenAI expects
     let processedImage = imageBase64;

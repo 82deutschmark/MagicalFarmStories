@@ -158,29 +158,35 @@ export async function registerRoutes(app: Express) {
         // Clean the base64 data (remove any data URI prefix if present)
         const base64Data = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
         
-        // Check image size before processing - OpenAI has size constraints
-        if (base64Data.length > 10 * 1024 * 1024) { // 10MB as safe limit
-          console.error("Image too large for OpenAI API:", base64Data.length);
-          throw new Error("Image is too large. Please use a smaller image (under 10MB).");
+        // Get size in MB for better logging
+        const sizeInMB = (base64Data.length * 0.75) / (1024 * 1024);
+        console.log(`Image size before processing: ${sizeInMB.toFixed(2)}MB`);
+        
+        // OpenAI has 20MB total request size limit, but we should use a lower threshold for images
+        const MAX_IMAGE_SIZE_MB = 4; // 4MB is a safer threshold
+        
+        if (sizeInMB > MAX_IMAGE_SIZE_MB) {
+          console.error(`Image too large for OpenAI API: ${sizeInMB.toFixed(2)}MB exceeds ${MAX_IMAGE_SIZE_MB}MB limit`);
+          throw new Error(`Image is too large (${sizeInMB.toFixed(2)}MB). Please use a smaller image (under ${MAX_IMAGE_SIZE_MB}MB).`);
         }
         
         // Convert base64 to buffer
         const imageBuffer = Buffer.from(base64Data, 'base64');
         
-        // Upload the image to OpenAI's files API
-        const file = await openai.files.create({
-          file: imageBuffer,
-          purpose: "assistants",
-        });
-        
-        // Store the file ID for use in the message
-        const fileId = file.id;
-        console.log("Image uploaded to OpenAI, file ID:", fileId);
-
-        // Check image size - OpenAI has size constraints
-        if (base64Data.length > 20 * 1024 * 1024) { // 20MB limit
-          console.error("Image too large for OpenAI API:", imageUrl.length);
-          throw new Error("Image is too large. Please use a smaller image (under 20MB).");
+        try {
+          // Upload the image to OpenAI's files API with timeout and size validation
+          console.log("Uploading image to OpenAI...");
+          const file = await openai.files.create({
+            file: imageBuffer,
+            purpose: "assistants",
+          });
+          
+          // Store the file ID for use in the message
+          const fileId = file.id;
+          console.log("Image successfully uploaded to OpenAI, file ID:", fileId);
+        } catch (uploadError) {
+          console.error("Error uploading image to OpenAI:", uploadError);
+          throw new Error(`Failed to upload image to OpenAI: ${uploadError.message || "Unknown error"}`);
         }
 
         console.log("Sending image to OpenAI Vision API");
