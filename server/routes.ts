@@ -196,12 +196,13 @@ export async function registerRoutes(app: Express) {
   // Create a new thread
   router.post("/api/openai/threads", async (req, res) => {
     try {
+      // Following OpenAI Assistants Quickstart
       const thread = await openai.beta.threads.create();
       console.log("Created new thread:", thread.id);
       res.json(thread);
     } catch (error: any) {
       console.error("Error creating thread:", error);
-      res.status(500).json({ message: error.message || "Failed to create thread" });
+      res.status(500).json({ message: error.message });
     }
   });
 
@@ -209,25 +210,26 @@ export async function registerRoutes(app: Express) {
   router.post("/api/openai/threads/:threadId/messages", async (req, res) => {
     try {
       const { threadId } = req.params;
-      const { role, content } = req.body;
+      const { content } = req.body;
 
       if (!content) {
         return res.status(400).json({ message: "Message content is required" });
       }
 
+      // Add the message to the thread
       const message = await openai.beta.threads.messages.create(
         threadId,
         {
-          role: role || "user",
-          content
+          role: "user",
+          content: content
         }
       );
 
-      console.log(`Added ${role || "user"} message to thread ${threadId}`);
+      console.log(`Added message to thread ${threadId}`);
       res.json(message);
     } catch (error: any) {
-      console.error("Error adding message to thread:", error);
-      res.status(500).json({ message: error.message || "Failed to add message to thread" });
+      console.error("Error adding message:", error);
+      res.status(500).json({ message: error.message });
     }
   });
 
@@ -235,42 +237,50 @@ export async function registerRoutes(app: Express) {
   router.post("/api/openai/threads/:threadId/runs", async (req, res) => {
     try {
       const { threadId } = req.params;
-      const { assistant_id } = req.body;
 
-      if (!assistant_id) {
-        return res.status(400).json({ message: "Assistant ID is required" });
-      }
-
+      // Run the assistant on the thread
       const run = await openai.beta.threads.runs.create(
         threadId,
-        {
-          assistant_id: assistant_id || ASSISTANT_ID
+        { 
+          assistant_id: ASSISTANT_ID
         }
       );
 
-      console.log(`Started assistant run ${run.id} on thread ${threadId}`);
+      console.log(`Started run ${run.id} on thread ${threadId}`);
       res.json(run);
     } catch (error: any) {
       console.error("Error running assistant:", error);
-      res.status(500).json({ message: error.message || "Failed to run assistant" });
+      res.status(500).json({ message: error.message });
     }
   });
 
-  // Check the status of an assistant run
+  // Check run status
   router.get("/api/openai/threads/:threadId/runs/:runId", async (req, res) => {
     try {
       const { threadId, runId } = req.params;
 
+      // Retrieve the run status
       const run = await openai.beta.threads.runs.retrieve(
         threadId,
         runId
       );
 
-      console.log(`Run ${runId} status: ${run.status}`);
-      res.json(run);
+      if (run.status === 'completed') {
+        // Get the latest messages from the thread
+        const messages = await openai.beta.threads.messages.list(
+          threadId
+        );
+
+        res.json({
+          status: run.status,
+          messages: messages.data
+        });
+      } else {
+        res.json({ status: run.status });
+      }
     } catch (error: any) {
       console.error("Error checking run status:", error);
-      res.status(500).json({ message: error.message || "Failed to check run status" });
+      res.status(500).json({ message: error.message });
     }
   });
 
