@@ -49,7 +49,7 @@ VITE_ASSISTANT_ID=asst_ZExL77IkNDUHucztPYSeHnLw
 ## API Endpoints
 
 - GET /api/farm-images: Retrieve random farm animal characters
-- POST /api/analyze-image: Analyze character using OpenAI Vision
+- POST /api/analyze-image: Analyze character using OpenAI Vision 
 - POST /api/openai/threads: Create new conversation thread
 - POST /api/openai/threads/:threadId/messages: Add messages to thread
 - POST /api/openai/threads/:threadId/runs: Run the assistant
@@ -57,28 +57,13 @@ VITE_ASSISTANT_ID=asst_ZExL77IkNDUHucztPYSeHnLw
 - POST /api/generate-illustration: Create story illustrations
 - POST /api/stories: Save generated stories
 
-## Database Schema
-
-### Farm Images Table
-- Stores farm animal characters
-- Tracks selection count and AI analysis status
-- Maintains image descriptions and associated thread IDs
-
-### Stories Table
-- Stores generated stories
-- Links to farm images
-- Includes generated illustrations
-
-## Development Notes
-
-The application is set up to run on Replit with automatic workflow management. The Express backend serves both the API and the Vite frontend on port 5000. Story generation uses OpenAI's Assistant API with a dedicated assistant for maintaining context throughout the story creation process.
-
 ## Known Issues and Debugging
 
 ### Current Issues:
 1. Story Page Not Loading:
    - After character selection, the /story/:characterId route shows "Character not found"
-   - Need to verify character ID passing and decoding
+   - Currently using UUID as characterId which is too long and hard to read
+   - Need to implement a shorter, more readable ID system for characters
    - Check if image base64 conversion is working properly
 
 2. OpenAI Assistant Integration:
@@ -114,7 +99,7 @@ The application is set up to run on Replit with automatic workflow management. T
    - Verify farm_images table structure
    - Ensure thread IDs are being stored with image metadata
    - Required fields:
-     * storyMakerId (UUID)
+     * storyMakerId (UUID) - Consider changing to a shorter, readable format
      * imageBase64 (Text)
      * description (Text)
      * threadId (Text)
