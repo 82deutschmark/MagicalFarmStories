@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { useLocation } from "wouter";
-import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/use-toast";
 import { Loader2, RefreshCw } from "lucide-react";
-import axios from "axios";
+import { LoadingAnimation } from "@/components/ui/loading-animation";
 
 interface FarmImage {
   id: number;
@@ -84,16 +85,8 @@ export default function ImageFetcher() {
   return (
     <div className="mt-8 grid gap-6 md:grid-cols-3">
       {loading ? (
-        // Loading skeletons
-        Array.from({ length: 3 }).map((_, index) => (
-          <Card key={index} className="overflow-hidden">
-            <div className="aspect-square p-2">
-              <Skeleton className="h-full w-full" />
-            </div>
-          </Card>
-        ))
+        <LoadingAnimation />
       ) : (
-        // Actual images
         images.map((image, index) => (
           <Card key={image.id} className="overflow-hidden relative"> {/* Use image.id as key */}
             <div 

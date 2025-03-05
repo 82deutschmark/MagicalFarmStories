@@ -4,6 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
+import { LoadingAnimation } from '@/components/ui/loading-animation'; // Added import
+
 
 interface FarmImage {
   id: number;
@@ -45,11 +47,11 @@ export default function Story() {
         console.log("Received character data:", analysisResponse.data);
 
         // Now fetch the full character data including the image
-        const farmImagesResponse = await axios.get(`/api/farm-images?character=${characterId}`); //Corrected to use characterId
+        const farmImagesResponse = await axios.get(`/api/farm-images?character=${characterId}`); 
         if (farmImagesResponse.data && farmImagesResponse.data.length > 0) {
           setCharacter({
             ...farmImagesResponse.data[0],
-            description: analysisResponse.data.description //Corrected to use analysisResponse
+            description: analysisResponse.data.description 
           });
         } else {
           toast({
@@ -65,7 +67,7 @@ export default function Story() {
           description: "Failed to load character information. Please try again.",
           variant: "destructive",
         });
-        setCharacter(null); // Explicitly set character to null on error
+        setCharacter(null); 
       } finally {
         setLoading(false);
       }
@@ -99,10 +101,28 @@ export default function Story() {
         <Card className="bg-white shadow-lg">
           <CardContent className="p-6">
             {loading ? (
-              <div className="space-y-4">
-                <Skeleton className="h-64 w-full rounded-md" />
-                <Skeleton className="h-10 w-3/4" />
-                <Skeleton className="h-32 w-full" />
+              <div className="text-center">
+                <Card className="p-8 bg-white/90">
+                  <LoadingAnimation 
+                    message="Getting to know your new farm friend" 
+                    variant="large" 
+                  />
+                  <p className="mt-4 text-muted-foreground">
+                    Our magical storyteller is learning all about your character...
+                  </p>
+                  <div className="mt-8 grid grid-cols-3 gap-4">
+                    <div className="col-span-1 animate-pulse">
+                      <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                      <div className="h-20 bg-muted rounded"></div>
+                    </div>
+                    <div className="col-span-2 animate-pulse">
+                      <div className="h-4 bg-muted rounded w-1/2 mb-2"></div>
+                      <div className="h-4 bg-muted rounded w-full mb-2"></div>
+                      <div className="h-4 bg-muted rounded w-5/6 mb-2"></div>
+                      <div className="h-4 bg-muted rounded w-3/4"></div>
+                    </div>
+                  </div>
+                </Card>
               </div>
             ) : character ? (
               <div>
@@ -133,3 +153,12 @@ export default function Story() {
     </div>
   );
 }
+
+// Placeholder for LoadingAnimation component -  replace with actual implementation
+const LoadingAnimation = ({ message, variant }: { message: string; variant: string }) => (
+  <div>
+    {/* Replace with your actual loading animation */}
+    <p>{message}</p>
+    {variant === 'large' && <div className="animate-spin h-16 w-16 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>}
+  </div>
+);
