@@ -8,7 +8,6 @@ export function RouterComponent() {
   // Add console logging for route matching
   const logRoute = (component: string, params: any) => {
     console.log(`RouterComponent - Rendering ${component}`, params);
-    return null;
   };
 
   return (

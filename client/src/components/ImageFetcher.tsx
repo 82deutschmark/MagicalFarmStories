@@ -68,8 +68,8 @@ export default function ImageFetcher() {
   const handleImageSelect = async (image: FarmImage) => {
     setAnalyzing(prev => ({ ...prev, [image.storyMakerId]: true }));
     try {
-      // Navigate to the story-maker page with the storyMakerId
-      setLocation(`/story-maker/${image.storyMakerId}`);
+      // Navigate to the story page with the storyMakerId (to match the router path)
+      setLocation(`/story/${encodeURIComponent(image.storyMakerId)}`);
     } catch (error) {
       toast({
         title: "Error",

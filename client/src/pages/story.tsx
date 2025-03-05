@@ -1,218 +1,119 @@
-import { useEffect, useState } from "react";
-import { useParams } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { analyzeCharacterImage, generateStory, generateIllustration } from "@/lib/openai";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import StoryDisplay from "@/components/story-display";
+import { useEffect, useState } from 'react';
+import { useRoute } from 'wouter';
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from '@/components/ui/use-toast';
+import axios from 'axios';
 
-interface StoryState {
-  characterDescription: string;
-  threadId: string | null;
-  storyText: string;
-  illustration: string | null;
+interface FarmImage {
+  id: number;
+  storyMakerId: string;
+  imageBase64: string;
+  description?: string;
+  analyzedByAI: boolean;
 }
 
 export default function Story() {
+  const [match, params] = useRoute('/story/:characterId');
+  const [loading, setLoading] = useState(true);
+  const [character, setCharacter] = useState<FarmImage | null>(null);
   const { toast } = useToast();
-  const { characterId } = useParams();
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
-  const [additionalPrompt, setAdditionalPrompt] = useState("");
-  const [storyState, setStoryState] = useState<StoryState>({
-    characterDescription: "",
-    threadId: null,
-    storyText: "",
-    illustration: null
-  });
-
-  console.log('Story Page - Received characterId:', characterId);
-
-  // Fetch character data first
-  const { data: characterData, isLoading } = useQuery({
-    queryKey: ['character', characterId],
-    queryFn: async () => {
-      if (!characterId) return null;
-      console.log('Story Page - Fetching character data for ID:', characterId);
-
-      const response = await fetch(`/api/farm-images/${characterId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch character data');
-      }
-      return response.json();
-    },
-    enabled: !!characterId
-  });
 
   useEffect(() => {
-    if (characterData) {
-      console.log('Story Page - Character data received:', characterData);
-      setImageBase64(characterData.imageBase64);
-    }
-  }, [characterData]);
+    async function fetchCharacterData() {
+      if (!params?.characterId) return;
 
-  if (isLoading) {
-    return <div className="text-center p-8">Loading character...</div>;
+      try {
+        setLoading(true);
+        const decodedId = decodeURIComponent(params.characterId);
+        console.log("Fetching character data for ID:", decodedId);
+
+        // First, try to analyze the image to get metadata and description
+        const response = await axios.post('/api/analyze-image', {
+          storyMakerId: decodedId
+        });
+
+        console.log("Received character data:", response.data);
+
+        // Now fetch the full character data including the image
+        const farmImagesResponse = await axios.get(`/api/farm-images?character=${decodedId}`);
+        if (farmImagesResponse.data && farmImagesResponse.data.length > 0) {
+          setCharacter({
+            ...farmImagesResponse.data[0],
+            description: response.data.description
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Character not found. Please try another character.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching character:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load character information. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchCharacterData();
+  }, [params?.characterId]);
+
+  if (!match) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md mx-4">
+          <CardContent className="pt-6">
+            <h1 className="text-2xl font-bold text-gray-900">Character Not Found</h1>
+            <p className="mt-4 text-sm text-gray-600">
+              The character you're looking for doesn't exist.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
-
-  if (!characterData && characterId) {
-    console.error('Story Page - Character not found for ID:', characterId);
-    return <div className="text-center p-8">Character not found</div>;
-  }
-
-  const imagePath = characterData ? characterData.imagePath : null;
-
-
-  // Analyze image and create thread
-  const { isLoading: isAnalyzing } = useQuery({
-    queryKey: ['/api/analyze-image', imagePath],
-    queryFn: async () => {
-      if (!imageBase64) return null;
-
-      const result = await analyzeCharacterImage(imageBase64);
-
-      setStoryState(prev => ({
-        ...prev,
-        characterDescription: result.description,
-        threadId: result.threadId
-      }));
-
-      return result;
-    },
-    enabled: !!imageBase64
-  });
-
-  // Generate story using the Assistant
-  const generateStoryMutation = useMutation({
-    mutationFn: async () => {
-      if (!storyState.threadId) throw new Error("No thread ID available");
-
-      const result = await generateStory(
-        storyState.threadId,
-        storyState.characterDescription,
-        additionalPrompt
-      );
-
-      setStoryState(prev => ({
-        ...prev,
-        threadId: result.threadId,
-        storyText: result.story
-      }));
-
-      return result;
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to generate story. Please try again.",
-        variant: "destructive",
-      });
-    }
-  });
-
-  // Generate illustration
-  const generateIllustrationMutation = useMutation({
-    mutationFn: async () => {
-      const url = await generateIllustration(storyState.storyText);
-      setStoryState(prev => ({
-        ...prev,
-        illustration: url
-      }));
-      return url;
-    }
-  });
-
-  // Save story
-  const saveStoryMutation = useMutation({
-    mutationFn: async () => {
-      return fetch("/api/stories", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          character: imagePath,
-          characterImageId: storyState.threadId,
-          storyText: storyState.storyText,
-          illustration: storyState.illustration
-        }),
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Your magical tale has been saved!",
-      });
-    }
-  });
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-blue-50 p-8">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <Card className="p-6">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold mb-4">Create Your Story</h2>
-
-            {/* Character Preview */}
-            <div className="flex items-start gap-6 mb-6">
-              <img
-                src={imagePath}
-                alt="Selected Farm Friend"
-                className="w-48 h-48 object-cover rounded-lg shadow-md"
-              />
-              <div className="flex-1">
-                <h3 className="text-xl font-semibold mb-2">Your Farm Friend</h3>
-                {storyState.characterDescription && (
-                  <p className="text-gray-600 italic mb-4">{storyState.characterDescription}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Story Tuning */}
-            {storyState.characterDescription && !storyState.storyText && (
+    <div className="min-h-screen bg-gradient-to-b from-amber-50 to-amber-100 p-4">
+      <div className="max-w-3xl mx-auto">
+        <Card className="bg-white shadow-lg">
+          <CardContent className="p-6">
+            {loading ? (
               <div className="space-y-4">
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">
-                    Add Special Details for Your Story
-                  </label>
-                  <Textarea
-                    placeholder="What magical adventure would you like your farm friend to have?"
-                    value={additionalPrompt}
-                    onChange={(e) => setAdditionalPrompt(e.target.value)}
-                    className="h-32"
-                  />
+                <Skeleton className="h-64 w-full rounded-md" />
+                <Skeleton className="h-10 w-3/4" />
+                <Skeleton className="h-32 w-full" />
+              </div>
+            ) : character ? (
+              <div>
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  <div className="w-full md:w-1/3">
+                    <img 
+                      src={`data:image/jpeg;base64,${character.imageBase64}`}
+                      alt="Character"
+                      className="w-full rounded-md shadow-md"
+                    />
+                  </div>
+                  <div className="w-full md:w-2/3">
+                    <h1 className="text-2xl font-bold mb-4">Your Farm Character</h1>
+                    <p className="text-gray-700">{character.description}</p>
+                  </div>
                 </div>
-                <Button
-                  onClick={() => generateStoryMutation.mutate()}
-                  disabled={generateStoryMutation.isPending}
-                  className="w-full"
-                >
-                  {generateStoryMutation.isPending ? "Creating Story..." : "Generate Story"}
-                </Button>
+
+                {/* Story generation form would go here */}
+              </div>
+            ) : (
+              <div className="text-center">
+                <p>Could not find character information. Please go back and select another character.</p>
               </div>
             )}
-
-            {/* Loading State */}
-            {isAnalyzing && (
-              <div className="text-center py-8">
-                <p>Analyzing your farm friend...</p>
-              </div>
-            )}
-
-            {/* Story Display */}
-            {storyState.storyText && (
-              <StoryDisplay
-                characterImage={imagePath}
-                story={storyState.storyText}
-                illustration={storyState.illustration}
-                onGenerateIllustration={() => generateIllustrationMutation.mutate()}
-                onSaveStory={() => saveStoryMutation.mutate()}
-                isGeneratingIllustration={generateIllustrationMutation.isPending}
-                isSaving={saveStoryMutation.isPending}
-              />
-            )}
-          </div>
+          </CardContent>
         </Card>
       </div>
     </div>
