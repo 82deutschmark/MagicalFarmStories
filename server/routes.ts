@@ -26,6 +26,8 @@ if (!process.env.VITE_OPENAI_API_KEY && !process.env.OPENAI_API_KEY) {
 // The assistant ID to use for story generation
 const ASSISTANT_ID = process.env.VITE_ASSISTANT_ID || process.env.ASSISTANT_ID || "asst_ZExL77IkNDUHucztPYSeHnLw";
 
+// Constant for the thread ID
+const THREAD_ID = "thread_LOANhYvFexEDJVyAoLfKw2av";
 
 export async function registerRoutes(app: Express) {
   const router = Router();
@@ -147,8 +149,7 @@ export async function registerRoutes(app: Express) {
         console.log("Using existing image description");
       } else {
         // Use specified thread ID instead of creating a new one
-        const threadId = "thread_LOANhYvFexEDJVyAoLfKw2av";
-        console.log("Using existing thread for image analysis:", threadId);
+        console.log("Using existing thread for image analysis:", THREAD_ID);
 
         // Prepare the image URL - OpenAI's format requirements for images
         let imageUrl;
@@ -160,9 +161,9 @@ export async function registerRoutes(app: Express) {
           // For base64 data, ensure it has the proper format with data URI scheme
           // Strip any existing data URI prefix to avoid duplication
           const base64Data = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-          
-          // OpenAI specifically requires this format for base64 images
-          imageUrl = `data:image/jpeg;base64,${base64Data}`;
+
+          // Correct image type to handle PNG images
+          imageUrl = `data:image/png;base64,${base64Data}`;
           console.log("Using properly formatted data URI for image, length:", imageUrl.length);
         }
 
@@ -176,7 +177,7 @@ export async function registerRoutes(app: Express) {
 
         // Add a message with the image to the thread
         await openai.beta.threads.messages.create(
-          threadId,
+          THREAD_ID,
           {
             role: "user",
             content: [
@@ -197,25 +198,25 @@ export async function registerRoutes(app: Express) {
         try {
           // Run the assistant on the thread
           const run = await openai.beta.threads.runs.create(
-            threadId,
+            THREAD_ID,
             { 
               assistant_id: ASSISTANT_ID
             }
           );
-          
-          console.log(`Started run ${run.id} on thread ${threadId} to analyze image`);
+
+          console.log(`Started run ${run.id} on thread ${THREAD_ID} to analyze image`);
 
           // Poll for the run completion
-          let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
+          let runStatus = await openai.beta.threads.runs.retrieve(THREAD_ID, run.id);
           let attempts = 0;
           const maxAttempts = 60; // Maximum number of polling attempts (60 seconds)
 
           // Wait for the run to complete
           while (runStatus.status !== 'completed' && runStatus.status !== 'failed' && attempts < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, 1000));
-            runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
+            runStatus = await openai.beta.threads.runs.retrieve(THREAD_ID, run.id);
             attempts++;
-            
+
             if (attempts % 10 === 0) {
               console.log(`Still waiting for run ${run.id}, status: ${runStatus.status}, attempt: ${attempts}`);
             }
@@ -235,7 +236,7 @@ export async function registerRoutes(app: Express) {
         }
 
         // Get the assistant's response
-        const messages = await openai.beta.threads.messages.list(threadId);
+        const messages = await openai.beta.threads.messages.list(THREAD_ID);
         const assistantMessages = messages.data.filter(msg => msg.role === "assistant");
 
         if (assistantMessages.length > 0) {
@@ -254,7 +255,7 @@ export async function registerRoutes(app: Express) {
             .set({ 
               description: description,
               analyzedByAI: true,
-              threadId: threadId // Store the thread ID for future use
+              threadId: THREAD_ID // Store the thread ID for future use
             })
             .where(sql`${farmImages.id} = ${id}`);
         } else {
@@ -262,7 +263,7 @@ export async function registerRoutes(app: Express) {
             .set({ 
               description: description,
               analyzedByAI: true,
-              threadId: threadId // Store the thread ID for future use
+              threadId: THREAD_ID // Store the thread ID for future use
             })
             .where(sql`${farmImages.storyMakerId} = ${storyMakerId}`);
         }

@@ -305,10 +305,10 @@ export const analyzeImage = async (imageBase64: string, storyMakerId: string, id
     else if (imageBase64.startsWith('data:image')) {
       console.log('Using existing data URL for image analysis');
     } 
-    // Otherwise, assume it's raw base64 data and add the data URL prefix
+    // Otherwise, assume it's raw base64 data and add the data URL prefix for PNG
     else {
-      processedImage = `data:image/jpeg;base64,${imageBase64}`;
-      console.log('Formatted raw base64 as data URL for OpenAI');
+      processedImage = `data:image/png;base64,${imageBase64}`;
+      console.log('Formatted raw base64 as PNG data URL for OpenAI');
     }
     
     console.log(`Sending image for analysis (${Math.round(processedImage.length/1024)}KB)`);
