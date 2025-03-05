@@ -150,25 +150,40 @@ export async function registerRoutes(app: Express) {
         const thread = await openai.beta.threads.create();
         console.log("Created new thread for image analysis:", thread.id);
 
-        // Prepare the image URL
-        const imageUrl = imageBase64.startsWith('http') 
-          ? imageBase64 
-          : `data:image/jpeg;base64,${imageBase64.replace(/^data:image\/[a-z]+;base64,/, '')}`;
+        // Prepare the image URL - only accept HTTP URLs or proper data URLs
+        let imageUrl;
+        if (imageBase64.startsWith('http')) {
+          imageUrl = imageBase64;
+          console.log("Using HTTP URL for image");
+        } else {
+          // For base64 data, ensure it has the proper format with data URI scheme
+          // Strip any existing data URI prefix to avoid duplication
+          const base64Data = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+          imageUrl = `data:image/jpeg;base64,${base64Data}`;
+          console.log("Using data URI for image, length:", imageUrl.length);
+        }
 
-        // Check if the image URL length is reasonable (data URLs can be very large)
-        const isValidUrl = imageUrl.length > 0 && imageUrl.length < 25 * 1024 * 1024; // 25MB limit
-
-        if (!isValidUrl) {
-          console.error("Invalid image URL format or size", {
-            startsWithHttp: imageBase64.startsWith('http'),
+        // Check if the URL is properly formatted
+        const isHttpUrl = imageUrl.startsWith('http') && imageUrl.length < 2048; // HTTP URLs should be reasonable length
+        const isDataUrl = imageUrl.startsWith('data:image/') && imageUrl.includes('base64,'); // Data URLs should have proper format
+        
+        if (!isHttpUrl && !isDataUrl) {
+          console.error("Invalid image URL format:", {
+            startsWithHttp: imageUrl.startsWith('http'),
+            startsWithDataImage: imageUrl.startsWith('data:image/'),
             urlLength: imageUrl.length,
             urlPreview: imageUrl.substring(0, 100) + '...'
           });
-          throw new Error("Invalid image format or size");
+          throw new Error("Invalid image format. Please provide a valid image URL or base64 data.");
         }
 
-        console.log("Sending image to OpenAI Vision API with URL type:", 
-          imageBase64.startsWith('http') ? "HTTP URL" : "data:image URL");
+        // OpenAI has size constraints
+        if (isDataUrl && imageUrl.length > 20 * 1024 * 1024) { // 20MB limit for data URLs
+          console.error("Image too large for OpenAI API:", imageUrl.length);
+          throw new Error("Image is too large. Please use a smaller image (under 20MB).");
+        }
+
+        console.log("Sending image to OpenAI Vision API with format:", isHttpUrl ? "HTTP URL" : "data:image URL");
 
         // Add a message with the image to the thread
         await openai.beta.threads.messages.create(
@@ -190,25 +205,44 @@ export async function registerRoutes(app: Express) {
           }
         );
 
-        // Run the assistant on the thread
-        const run = await openai.beta.threads.runs.create(
-          thread.id,
-          { 
-            assistant_id: ASSISTANT_ID
+        try {
+          // Run the assistant on the thread
+          const run = await openai.beta.threads.runs.create(
+            thread.id,
+            { 
+              assistant_id: ASSISTANT_ID
+            }
+          );
+          
+          console.log(`Started run ${run.id} on thread ${thread.id} to analyze image`);
+
+          // Poll for the run completion
+          let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+          let attempts = 0;
+          const maxAttempts = 60; // Maximum number of polling attempts (60 seconds)
+
+          // Wait for the run to complete
+          while (runStatus.status !== 'completed' && runStatus.status !== 'failed' && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+            attempts++;
+            
+            if (attempts % 10 === 0) {
+              console.log(`Still waiting for run ${run.id}, status: ${runStatus.status}, attempt: ${attempts}`);
+            }
           }
-        );
 
-        // Poll for the run completion
-        let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+          if (attempts >= maxAttempts) {
+            throw new Error(`Run timed out after ${maxAttempts} seconds`);
+          }
 
-        // Wait for the run to complete
-        while (runStatus.status !== 'completed' && runStatus.status !== 'failed') {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-        }
-
-        if (runStatus.status === 'failed') {
-          throw new Error("Assistant run failed: " + JSON.stringify(runStatus.last_error));
+          if (runStatus.status === 'failed') {
+            console.error("Assistant run failed:", runStatus.last_error);
+            throw new Error("Assistant run failed: " + JSON.stringify(runStatus.last_error));
+          }
+        } catch (apiError) {
+          console.error("Error in OpenAI API call:", apiError);
+          throw new Error(`OpenAI API error: ${apiError.message || "Unknown error"}`);
         }
 
         // Get the assistant's response

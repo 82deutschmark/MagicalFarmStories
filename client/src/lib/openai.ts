@@ -291,28 +291,53 @@ export const analyzeImage = async (imageBase64: string, storyMakerId: string, id
   try {
     // Check if the image is too large - OpenAI has size limits
     if (imageBase64.length > 20 * 1024 * 1024) { // 20MB limit
-      throw new Error("Image is too large to process. Please use a smaller image.");
+      throw new Error("Image is too large to process. Please use a smaller image (under 20MB).");
     }
     
-    // Ensure the image base64 string is properly formatted
+    // Normalize the image format
     let processedImage = imageBase64;
-    if (!imageBase64.startsWith('data:image') && !imageBase64.startsWith('http')) {
+    
+    // If it's already an HTTP URL, use it as is
+    if (imageBase64.startsWith('http')) {
+      console.log('Using HTTP URL for image analysis');
+    } 
+    // If it's already a properly formatted data URL, use it as is
+    else if (imageBase64.startsWith('data:image')) {
+      console.log('Using data URL for image analysis');
+    } 
+    // Otherwise, assume it's raw base64 data and add the data URL prefix
+    else {
       processedImage = `data:image/jpeg;base64,${imageBase64}`;
+      console.log('Converted raw base64 to data URL for image analysis');
     }
+    
+    console.log(`Sending image for analysis (${Math.round(processedImage.length/1024)}KB)`);
     
     const response = await axios.post('/api/analyze-image', {
       imageBase64: processedImage,
       storyMakerId,
       id // Include numeric ID when available
     });
+    
     return response.data;
   } catch (error: any) {
     console.error('Error analyzing image:', error);
+    
     // Provide more specific error messages based on the error type
-    if (error.response && error.response.status === 500) {
-      const serverError = error.response.data.message || "Server error processing the image";
-      throw new Error(`Server error: ${serverError}`);
+    if (error.response) {
+      const status = error.response.status;
+      const serverMessage = error.response.data?.message || "Unknown server error";
+      
+      if (status === 400) {
+        throw new Error(`Bad request: ${serverMessage}`);
+      } else if (status === 500) {
+        throw new Error(`Server error: ${serverMessage}`);
+      } else {
+        throw new Error(`Error (${status}): ${serverMessage}`);
+      }
     }
-    throw error;
+    
+    // For network errors or other issues
+    throw new Error(`Failed to analyze image: ${error.message}`);
   }
 };
