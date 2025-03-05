@@ -31,11 +31,11 @@ export default function Story() {
         // Directly fetch the farm image by its numeric ID
         const response = await axios.get(`/api/farm-images/${characterId}`);
         const farmImage = response.data;
-        
+
         if (!farmImage || !farmImage.imageBase64) {
           throw new Error("Could not find image data for the selected character");
         }
-        
+
         // Then analyze the image to get metadata and description
         const analysisResponse = await axios.post('/api/analyze-image', {
           id: characterId,
@@ -45,11 +45,11 @@ export default function Story() {
         console.log("Received character data:", analysisResponse.data);
 
         // Now fetch the full character data including the image
-        const farmImagesResponse = await axios.get(`/api/farm-images?character=${decodedId}`);
+        const farmImagesResponse = await axios.get(`/api/farm-images?character=${characterId}`); //Corrected to use characterId
         if (farmImagesResponse.data && farmImagesResponse.data.length > 0) {
           setCharacter({
             ...farmImagesResponse.data[0],
-            description: response.data.description
+            description: analysisResponse.data.description //Corrected to use analysisResponse
           });
         } else {
           toast({
@@ -65,13 +65,18 @@ export default function Story() {
           description: "Failed to load character information. Please try again.",
           variant: "destructive",
         });
+        setCharacter(null); // Explicitly set character to null on error
       } finally {
         setLoading(false);
       }
     }
 
-    fetchCharacterData();
-  }, [params?.characterId]);
+    if (params?.id) {
+      fetchCharacterData();
+    } else {
+      setLoading(false);
+    }
+  }, [params?.id, toast]);
 
   if (!match) {
     return (
