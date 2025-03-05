@@ -4,16 +4,21 @@ import { Card } from "@/components/ui/card";
 
 interface CharacterSelectProps {
   imagePath: string;
+  storyMakerId: string;
   onSelect: () => void;
 }
 
-export function CharacterSelect({ imagePath, onSelect }: CharacterSelectProps) {
+export function CharacterSelect({ imagePath, storyMakerId, onSelect }: CharacterSelectProps) {
   const [_, setLocation] = useLocation();
 
   const handleSelect = () => {
-    // Navigate to the story page with the encoded image path
-    const encodedPath = encodeURIComponent(imagePath);
-    setLocation(`/story/${encodedPath}`);
+    console.log('Character Select - Selected character:', {
+      imagePath,
+      storyMakerId
+    });
+
+    // Navigate to the story page with the storyMakerId
+    setLocation(`/story/${storyMakerId}`);
     onSelect();
   };
 

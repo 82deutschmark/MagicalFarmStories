@@ -27,40 +27,42 @@ export default function Story() {
     illustration: null
   });
 
-  // Decode the URL-encoded image path
-  const imagePath = characterId ? decodeURIComponent(characterId) : null;
+  console.log('Story Page - Received characterId:', characterId);
 
-  if (!imagePath) {
-    return <div>Character not found</div>;
+  // Fetch character data first
+  const { data: characterData, isLoading } = useQuery({
+    queryKey: ['character', characterId],
+    queryFn: async () => {
+      if (!characterId) return null;
+      console.log('Story Page - Fetching character data for ID:', characterId);
+
+      const response = await fetch(`/api/farm-images/${characterId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch character data');
+      }
+      return response.json();
+    },
+    enabled: !!characterId
+  });
+
+  useEffect(() => {
+    if (characterData) {
+      console.log('Story Page - Character data received:', characterData);
+      setImageBase64(characterData.imageBase64);
+    }
+  }, [characterData]);
+
+  if (isLoading) {
+    return <div className="text-center p-8">Loading character...</div>;
   }
 
-  // Convert image to base64
-  useEffect(() => {
-    const convertImageToBase64 = async () => {
-      try {
-        const response = await fetch(imagePath);
-        const blob = await response.blob();
-        const reader = new FileReader();
+  if (!characterData && characterId) {
+    console.error('Story Page - Character not found for ID:', characterId);
+    return <div className="text-center p-8">Character not found</div>;
+  }
 
-        reader.onloadend = () => {
-          const base64String = reader.result as string;
-          const base64 = base64String.split(',')[1];
-          setImageBase64(base64);
-        };
+  const imagePath = characterData ? characterData.imagePath : null;
 
-        reader.readAsDataURL(blob);
-      } catch (error) {
-        console.error("Error converting image to base64:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load character image. Please try again.",
-          variant: "destructive",
-        });
-      }
-    };
-
-    convertImageToBase64();
-  }, [imagePath, toast]);
 
   // Analyze image and create thread
   const { isLoading: isAnalyzing } = useQuery({
@@ -154,9 +156,9 @@ export default function Story() {
 
             {/* Character Preview */}
             <div className="flex items-start gap-6 mb-6">
-              <img 
-                src={imagePath} 
-                alt="Selected Farm Friend" 
+              <img
+                src={imagePath}
+                alt="Selected Farm Friend"
                 className="w-48 h-48 object-cover rounded-lg shadow-md"
               />
               <div className="flex-1">
