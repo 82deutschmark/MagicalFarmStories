@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRoute } from 'wouter';
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingAnimation } from "@/components/ui/loading-animation";
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
 import { LoadingAnimation } from '@/components/ui/loading-animation'; // Added import
@@ -154,11 +155,4 @@ export default function Story() {
   );
 }
 
-// Placeholder for LoadingAnimation component -  replace with actual implementation
-const LoadingAnimation = ({ message, variant }: { message: string; variant: string }) => (
-  <div>
-    {/* Replace with your actual loading animation */}
-    <p>{message}</p>
-    {variant === 'large' && <div className="animate-spin h-16 w-16 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>}
-  </div>
-);
+// We're now using the imported LoadingAnimation component from ui/loading-animation.tsx
