@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react';
 import { useRoute } from 'wouter';
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LoadingAnimation } from "@/components/ui/loading-animation";
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
-
 
 interface FarmImage {
   id: number;
@@ -47,11 +45,11 @@ export default function Story() {
         console.log("Received character data:", analysisResponse.data);
 
         // Now fetch the full character data including the image
-        const farmImagesResponse = await axios.get(`/api/farm-images?character=${characterId}`); 
+        const farmImagesResponse = await axios.get(`/api/farm-images?character=${characterId}`); //Corrected to use characterId
         if (farmImagesResponse.data && farmImagesResponse.data.length > 0) {
           setCharacter({
             ...farmImagesResponse.data[0],
-            description: analysisResponse.data.description 
+            description: analysisResponse.data.description //Corrected to use analysisResponse
           });
         } else {
           toast({
@@ -67,7 +65,7 @@ export default function Story() {
           description: "Failed to load character information. Please try again.",
           variant: "destructive",
         });
-        setCharacter(null); 
+        setCharacter(null); // Explicitly set character to null on error
       } finally {
         setLoading(false);
       }
@@ -101,28 +99,10 @@ export default function Story() {
         <Card className="bg-white shadow-lg">
           <CardContent className="p-6">
             {loading ? (
-              <div className="text-center">
-                <Card className="p-8 bg-white/90">
-                  <LoadingAnimation 
-                    message="Getting to know your new farm friend" 
-                    variant="large" 
-                  />
-                  <p className="mt-4 text-muted-foreground">
-                    Our magical storyteller is learning all about your character...
-                  </p>
-                  <div className="mt-8 grid grid-cols-3 gap-4">
-                    <div className="col-span-1 animate-pulse">
-                      <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
-                      <div className="h-20 bg-muted rounded"></div>
-                    </div>
-                    <div className="col-span-2 animate-pulse">
-                      <div className="h-4 bg-muted rounded w-1/2 mb-2"></div>
-                      <div className="h-4 bg-muted rounded w-full mb-2"></div>
-                      <div className="h-4 bg-muted rounded w-5/6 mb-2"></div>
-                      <div className="h-4 bg-muted rounded w-3/4"></div>
-                    </div>
-                  </div>
-                </Card>
+              <div className="space-y-4">
+                <Skeleton className="h-64 w-full rounded-md" />
+                <Skeleton className="h-10 w-3/4" />
+                <Skeleton className="h-32 w-full" />
               </div>
             ) : character ? (
               <div>
@@ -153,5 +133,3 @@ export default function Story() {
     </div>
   );
 }
-
-// We're now using the imported LoadingAnimation component from ui/loading-animation.tsx

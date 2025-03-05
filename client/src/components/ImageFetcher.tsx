@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/components/ui/use-toast";
 import { Loader2, RefreshCw } from "lucide-react";
-import { LoadingAnimation } from "@/components/ui/loading-animation";
+import axios from "axios";
 
 interface FarmImage {
   id: number;
@@ -66,9 +65,10 @@ export default function ImageFetcher() {
   };
 
   const handleImageSelect = async (image: FarmImage) => {
-    setAnalyzing(prev => ({ ...prev, [image.id.toString()]: true })); 
+    setAnalyzing(prev => ({ ...prev, [image.id.toString()]: true })); // Use image.id
     try {
-      setLocation(`/story/${encodeURIComponent(image.id.toString())}`); 
+      // Navigate to the story page with the image.id
+      setLocation(`/story/${encodeURIComponent(image.id.toString())}`); // Use image.id
     } catch (error) {
       toast({
         title: "Error",
@@ -77,17 +77,25 @@ export default function ImageFetcher() {
       });
       console.error("Error selecting image:", error);
     } finally {
-      setAnalyzing(prev => ({ ...prev, [image.id.toString()]: false })); 
+      setAnalyzing(prev => ({ ...prev, [image.id.toString()]: false })); // Use image.id
     }
   };
 
   return (
     <div className="mt-8 grid gap-6 md:grid-cols-3">
       {loading ? (
-        <LoadingAnimation />
+        // Loading skeletons
+        Array.from({ length: 3 }).map((_, index) => (
+          <Card key={index} className="overflow-hidden">
+            <div className="aspect-square p-2">
+              <Skeleton className="h-full w-full" />
+            </div>
+          </Card>
+        ))
       ) : (
+        // Actual images
         images.map((image, index) => (
-          <Card key={image.id} className="overflow-hidden relative"> 
+          <Card key={image.id} className="overflow-hidden relative"> {/* Use image.id as key */}
             <div 
               className="aspect-square p-2 cursor-pointer" 
               onClick={() => !analyzing[image.id.toString()] && handleImageSelect(image)}

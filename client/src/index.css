@@ -5,36 +5,6 @@
 @layer base {
   * {
     @apply border-border;
-
-@keyframes progress {
-  0% {
-    width: 5%;
-  }
-  50% {
-    width: 60%;
-  }
-  100% {
-    width: 85%;
-  }
-}
-
-.animate-progress {
-  animation: progress 30s ease-in-out;
-}
-
-/* Add delay variants for animations */
-.delay-300 {
-  animation-delay: 300ms;
-}
-
-.delay-700 {
-  animation-delay: 700ms;
-}
-
-.delay-1000 {
-  animation-delay: 1000ms;
-}
-
   }
 
   body {
