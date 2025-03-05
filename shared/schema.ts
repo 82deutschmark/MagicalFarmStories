@@ -1,4 +1,3 @@
-
 import { pgTable, text, serial, timestamp, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -11,6 +10,7 @@ export const farmImages = pgTable("farm_images", {
   description: text("description"),
   analyzedByAI: boolean("analyzed_by_ai").default(false),
   selectionCount: integer("selection_count").default(0),
+  threadId: text("thread_id"), // Add thread ID field to store assistant thread
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -30,6 +30,7 @@ export const insertFarmImageSchema = createInsertSchema(farmImages).pick({
   description: true,
   analyzedByAI: true,
   selectionCount: true,
+  threadId: true, // Include threadId in the schema
 });
 
 export const insertStorySchema = createInsertSchema(stories).pick({

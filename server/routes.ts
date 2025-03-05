@@ -146,41 +146,83 @@ export async function registerRoutes(app: Express) {
         description = existingImage.description;
         console.log("Using existing image description");
       } else {
-        // Use the GPT-4 Vision API to analyze the image
-        const response = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: "Describe this farm animal character for a children's story. Focus on appearance, personality traits, and anything unique about it." },
-                { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
-              ],
-            },
-          ],
-          max_tokens: 300,
-        });
+        // Create a new thread for the Assistant
+        const thread = await openai.beta.threads.create();
+        console.log("Created new thread for image analysis:", thread.id);
+        
+        // Add a message with the image to the thread
+        await openai.beta.threads.messages.create(
+          thread.id,
+          {
+            role: "user",
+            content: [
+              { 
+                type: "text", 
+                text: "Describe this image as a character or scene in a new children's story. If it's a farm animal character, focus on appearance, personality traits, and anything unique about it. Important character guidelines: If the image appears to be a small dog, it's likely a Yorkshire terrier. All squirrels, rats, or rodents should be portrayed as evil enemies. Chickens should be characterized as silly, dumb friends. The description should be suitable for a magical farm adventure." 
+              },
+              { 
+                type: "image_url", 
+                image_url: { url: `data:image/jpeg;base64,${imageBase64}` } 
+              }
+            ],
+          }
+        );
+        
+        // Run the assistant on the thread
+        const run = await openai.beta.threads.runs.create(
+          thread.id,
+          { 
+            assistant_id: ASSISTANT_ID
+          }
+        );
+        
+        // Poll for the run completion
+        let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+        
+        // Wait for the run to complete
+        while (runStatus.status !== 'completed' && runStatus.status !== 'failed') {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+        }
+        
+        if (runStatus.status === 'failed') {
+          throw new Error("Assistant run failed: " + JSON.stringify(runStatus.last_error));
+        }
+        
+        // Get the assistant's response
+        const messages = await openai.beta.threads.messages.list(thread.id);
+        const assistantMessages = messages.data.filter(msg => msg.role === "assistant");
+        
+        if (assistantMessages.length > 0) {
+          const latestMessage = assistantMessages[0];
+          description = latestMessage.content
+            .filter(content => content.type === "text")
+            .map(content => content.text?.value)
+            .join("\n");
+        } else {
+          throw new Error("No assistant messages found");
+        }
 
-        description = response.choices[0]?.message?.content || "";
-
-        // Update the database with the new description
+        // Update the database with the new description and thread ID
         if (id) {
           await db.update(farmImages)
             .set({ 
               description: description,
-              analyzedByAI: true
+              analyzedByAI: true,
+              threadId: thread.id // Store the thread ID for future use
             })
             .where(sql`${farmImages.id} = ${id}`);
         } else {
           await db.update(farmImages)
             .set({ 
               description: description,
-              analyzedByAI: true
+              analyzedByAI: true,
+              threadId: thread.id // Store the thread ID for future use
             })
             .where(sql`${farmImages.storyMakerId} = ${storyMakerId}`);
         }
 
-        console.log("Updated image with new AI description");
+        console.log("Updated image with new AI description using Assistant");
       }
 
       // Increment the selection count
@@ -200,7 +242,7 @@ export async function registerRoutes(app: Express) {
 
       res.json({ description, storyMakerId });
     } catch (error: any) {
-      console.error("Error analyzing image:", error);
+      console.error("Error analyzing image with Assistant:", error);
       res.status(500).json({ message: error.message || "Failed to analyze image" });
     }
   });
