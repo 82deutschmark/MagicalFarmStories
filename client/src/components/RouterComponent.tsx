@@ -1,15 +1,18 @@
 
 import React from 'react';
-import { Router } from 'wouter';
+import { Router, Route, Switch } from 'wouter';
+import Home from '@/pages/home';
+import NotFound from '@/pages/not-found';
+import StoryMaker from '@/pages/story-maker';
 
-type RouterComponentProps = {
-  children: React.ReactNode;
-};
-
-const RouterComponent: React.FC<RouterComponentProps> = ({ children }) => {
+export function RouterComponent() {
   return (
-    <Router>{children}</Router>
+    <Router>
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route path="/story-maker/:id" component={StoryMaker} />
+        <Route component={NotFound} />
+      </Switch>
+    </Router>
   );
-};
-
-export default RouterComponent;
+}

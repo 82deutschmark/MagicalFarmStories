@@ -68,11 +68,8 @@ export default function ImageFetcher() {
   const handleImageSelect = async (image: FarmImage) => {
     setAnalyzing(prev => ({ ...prev, [image.storyMakerId]: true }));
     try {
-      // Create a URL for the base64 image
-      const imageUrl = `data:image/jpeg;base64,${image.imageBase64}`;
-      
-      // Redirect to the story page with the image URL
-      setLocation(`/story/${encodeURIComponent(imageUrl)}`);
+      // Navigate to the story-maker page with the storyMakerId
+      setLocation(`/story-maker/${image.storyMakerId}`);
     } catch (error) {
       toast({
         title: "Error",
