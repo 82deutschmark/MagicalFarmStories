@@ -289,14 +289,30 @@ import axios from 'axios';
 
 export const analyzeImage = async (imageBase64: string, storyMakerId: string, id?: number) => {
   try {
+    // Check if the image is too large - OpenAI has size limits
+    if (imageBase64.length > 20 * 1024 * 1024) { // 20MB limit
+      throw new Error("Image is too large to process. Please use a smaller image.");
+    }
+    
+    // Ensure the image base64 string is properly formatted
+    let processedImage = imageBase64;
+    if (!imageBase64.startsWith('data:image') && !imageBase64.startsWith('http')) {
+      processedImage = `data:image/jpeg;base64,${imageBase64}`;
+    }
+    
     const response = await axios.post('/api/analyze-image', {
-      imageBase64,
+      imageBase64: processedImage,
       storyMakerId,
       id // Include numeric ID when available
     });
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error analyzing image:', error);
+    // Provide more specific error messages based on the error type
+    if (error.response && error.response.status === 500) {
+      const serverError = error.response.data.message || "Server error processing the image";
+      throw new Error(`Server error: ${serverError}`);
+    }
     throw error;
   }
 };

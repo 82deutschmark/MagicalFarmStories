@@ -150,6 +150,26 @@ export async function registerRoutes(app: Express) {
         const thread = await openai.beta.threads.create();
         console.log("Created new thread for image analysis:", thread.id);
 
+        // Prepare the image URL
+        const imageUrl = imageBase64.startsWith('http') 
+          ? imageBase64 
+          : `data:image/jpeg;base64,${imageBase64.replace(/^data:image\/[a-z]+;base64,/, '')}`;
+
+        // Check if the image URL length is reasonable (data URLs can be very large)
+        const isValidUrl = imageUrl.length > 0 && imageUrl.length < 25 * 1024 * 1024; // 25MB limit
+
+        if (!isValidUrl) {
+          console.error("Invalid image URL format or size", {
+            startsWithHttp: imageBase64.startsWith('http'),
+            urlLength: imageUrl.length,
+            urlPreview: imageUrl.substring(0, 100) + '...'
+          });
+          throw new Error("Invalid image format or size");
+        }
+
+        console.log("Sending image to OpenAI Vision API with URL type:", 
+          imageBase64.startsWith('http') ? "HTTP URL" : "data:image URL");
+
         // Add a message with the image to the thread
         await openai.beta.threads.messages.create(
           thread.id,
@@ -163,7 +183,7 @@ export async function registerRoutes(app: Express) {
               { 
                 type: "image_url", 
                 image_url: { 
-                  url: imageBase64.startsWith('http') ? imageBase64 : `data:image/jpeg;base64,${imageBase64.replace(/^data:image\/[a-z]+;base64,/, '')}`
+                  url: imageUrl
                 } 
               }
             ],
