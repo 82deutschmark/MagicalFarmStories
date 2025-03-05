@@ -294,21 +294,21 @@ export const analyzeImage = async (imageBase64: string, storyMakerId: string, id
       throw new Error("Image is too large to process. Please use a smaller image (under 20MB).");
     }
     
-    // Normalize the image format
+    // Normalize the image format - ensure it's in the format OpenAI expects
     let processedImage = imageBase64;
     
     // If it's already an HTTP URL, use it as is
     if (imageBase64.startsWith('http')) {
       console.log('Using HTTP URL for image analysis');
     } 
-    // If it's already a properly formatted data URL, use it as is
+    // If it's already a properly formatted data URL, keep it as is
     else if (imageBase64.startsWith('data:image')) {
-      console.log('Using data URL for image analysis');
+      console.log('Using existing data URL for image analysis');
     } 
     // Otherwise, assume it's raw base64 data and add the data URL prefix
     else {
       processedImage = `data:image/jpeg;base64,${imageBase64}`;
-      console.log('Converted raw base64 to data URL for image analysis');
+      console.log('Formatted raw base64 as data URL for OpenAI');
     }
     
     console.log(`Sending image for analysis (${Math.round(processedImage.length/1024)}KB)`);

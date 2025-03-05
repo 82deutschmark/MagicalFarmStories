@@ -150,40 +150,29 @@ export async function registerRoutes(app: Express) {
         const threadId = "thread_LOANhYvFexEDJVyAoLfKw2av";
         console.log("Using existing thread for image analysis:", threadId);
 
-        // Prepare the image URL - only accept HTTP URLs or proper data URLs
+        // Prepare the image URL - OpenAI's format requirements for images
         let imageUrl;
         if (imageBase64.startsWith('http')) {
+          // HTTP URLs can be used directly
           imageUrl = imageBase64;
           console.log("Using HTTP URL for image");
         } else {
           // For base64 data, ensure it has the proper format with data URI scheme
           // Strip any existing data URI prefix to avoid duplication
           const base64Data = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+          
+          // OpenAI specifically requires this format for base64 images
           imageUrl = `data:image/jpeg;base64,${base64Data}`;
-          console.log("Using data URI for image, length:", imageUrl.length);
+          console.log("Using properly formatted data URI for image, length:", imageUrl.length);
         }
 
-        // Check if the URL is properly formatted
-        const isHttpUrl = imageUrl.startsWith('http') && imageUrl.length < 2048; // HTTP URLs should be reasonable length
-        const isDataUrl = imageUrl.startsWith('data:image/') && imageUrl.includes('base64,'); // Data URLs should have proper format
-        
-        if (!isHttpUrl && !isDataUrl) {
-          console.error("Invalid image URL format:", {
-            startsWithHttp: imageUrl.startsWith('http'),
-            startsWithDataImage: imageUrl.startsWith('data:image/'),
-            urlLength: imageUrl.length,
-            urlPreview: imageUrl.substring(0, 100) + '...'
-          });
-          throw new Error("Invalid image format. Please provide a valid image URL or base64 data.");
-        }
-
-        // OpenAI has size constraints
-        if (isDataUrl && imageUrl.length > 20 * 1024 * 1024) { // 20MB limit for data URLs
+        // Check image size - OpenAI has size constraints
+        if (imageUrl.length > 20 * 1024 * 1024) { // 20MB limit
           console.error("Image too large for OpenAI API:", imageUrl.length);
           throw new Error("Image is too large. Please use a smaller image (under 20MB).");
         }
 
-        console.log("Sending image to OpenAI Vision API with format:", isHttpUrl ? "HTTP URL" : "data:image URL");
+        console.log("Sending image to OpenAI Vision API");
 
         // Add a message with the image to the thread
         await openai.beta.threads.messages.create(
