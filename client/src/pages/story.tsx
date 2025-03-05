@@ -28,9 +28,19 @@ export default function Story() {
         const decodedId = decodeURIComponent(params.characterId);
         console.log("Fetching character data for ID:", decodedId);
 
-        // First, try to analyze the image to get metadata and description
+        // First, fetch the farm image data from the database to get imageBase64
+        // We need to first get the farm image data that includes the base64 image
+        const farmImageResponse = await axios.get(`/api/farm-images?count=1&orderBy=random&character=${decodedId}`);
+        const farmImage = farmImageResponse.data[0];
+        
+        if (!farmImage || !farmImage.imageBase64) {
+          throw new Error("Could not find image data for the selected character");
+        }
+        
+        // Then analyze the image to get metadata and description
         const response = await axios.post('/api/analyze-image', {
-          storyMakerId: decodedId
+          storyMakerId: decodedId,
+          imageBase64: farmImage.imageBase64
         });
 
         console.log("Received character data:", response.data);
