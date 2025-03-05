@@ -8,17 +8,18 @@ interface CharacterSelectProps {
   onSelect: () => void;
 }
 
-export function CharacterSelect({ imagePath, storyMakerId, onSelect }: CharacterSelectProps) {
+export function CharacterSelect({ imagePath, storyMakerId, id, onSelect }: CharacterSelectProps & { id: number }) {
   const [_, setLocation] = useLocation();
 
   const handleSelect = () => {
     console.log('Character Select - Selected character:', {
       imagePath,
+      id,
       storyMakerId
     });
 
-    // Navigate to the story page with the storyMakerId
-    setLocation(`/story/${storyMakerId}`);
+    // Navigate to the story page with the numeric id
+    setLocation(`/story/${id}`);
     onSelect();
   };
 

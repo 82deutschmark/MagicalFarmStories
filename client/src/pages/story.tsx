@@ -14,36 +14,35 @@ interface FarmImage {
 }
 
 export default function Story() {
-  const [match, params] = useRoute('/story/:characterId');
+  const [match, params] = useRoute('/story/:id');
   const [loading, setLoading] = useState(true);
   const [character, setCharacter] = useState<FarmImage | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     async function fetchCharacterData() {
-      if (!params?.characterId) return;
+      if (!params?.id) return;
 
       try {
         setLoading(true);
-        const decodedId = decodeURIComponent(params.characterId);
-        console.log("Fetching character data for ID:", decodedId);
+        const characterId = parseInt(params.id);
+        console.log("Fetching character data for ID:", characterId);
 
-        // First, fetch the farm image data from the database to get imageBase64
-        // We need to first get the farm image data that includes the base64 image
-        const farmImageResponse = await axios.get(`/api/farm-images?count=1&orderBy=random&character=${decodedId}`);
-        const farmImage = farmImageResponse.data[0];
+        // Directly fetch the farm image by its numeric ID
+        const response = await axios.get(`/api/farm-images/${characterId}`);
+        const farmImage = response.data;
         
         if (!farmImage || !farmImage.imageBase64) {
           throw new Error("Could not find image data for the selected character");
         }
         
         // Then analyze the image to get metadata and description
-        const response = await axios.post('/api/analyze-image', {
-          storyMakerId: decodedId,
+        const analysisResponse = await axios.post('/api/analyze-image', {
+          id: characterId,
           imageBase64: farmImage.imageBase64
         });
 
-        console.log("Received character data:", response.data);
+        console.log("Received character data:", analysisResponse.data);
 
         // Now fetch the full character data including the image
         const farmImagesResponse = await axios.get(`/api/farm-images?character=${decodedId}`);

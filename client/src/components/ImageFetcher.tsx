@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -66,10 +65,10 @@ export default function ImageFetcher() {
   };
 
   const handleImageSelect = async (image: FarmImage) => {
-    setAnalyzing(prev => ({ ...prev, [image.storyMakerId]: true }));
+    setAnalyzing(prev => ({ ...prev, [image.id.toString()]: true })); // Use image.id
     try {
-      // Navigate to the story page with the storyMakerId (to match the router path)
-      setLocation(`/story/${encodeURIComponent(image.storyMakerId)}`);
+      // Navigate to the story page with the image.id
+      setLocation(`/story/${encodeURIComponent(image.id.toString())}`); // Use image.id
     } catch (error) {
       toast({
         title: "Error",
@@ -78,7 +77,7 @@ export default function ImageFetcher() {
       });
       console.error("Error selecting image:", error);
     } finally {
-      setAnalyzing(prev => ({ ...prev, [image.storyMakerId]: false }));
+      setAnalyzing(prev => ({ ...prev, [image.id.toString()]: false })); // Use image.id
     }
   };
 
@@ -96,17 +95,17 @@ export default function ImageFetcher() {
       ) : (
         // Actual images
         images.map((image, index) => (
-          <Card key={image.storyMakerId} className="overflow-hidden relative">
+          <Card key={image.id} className="overflow-hidden relative"> {/* Use image.id as key */}
             <div 
               className="aspect-square p-2 cursor-pointer" 
-              onClick={() => !analyzing[image.storyMakerId] && handleImageSelect(image)}
+              onClick={() => !analyzing[image.id.toString()] && handleImageSelect(image)}
             >
               <img
                 src={`data:image/jpeg;base64,${image.imageBase64}`}
                 alt={image.originalFileName || "Farm character"}
                 className="h-full w-full object-cover rounded-md"
               />
-              {analyzing[image.storyMakerId] && (
+              {analyzing[image.id.toString()] && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-md">
                   <Loader2 className="h-8 w-8 animate-spin text-white" />
                   <span className="ml-2 text-white font-medium">Analyzing...</span>
