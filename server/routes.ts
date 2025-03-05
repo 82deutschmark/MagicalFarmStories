@@ -49,17 +49,17 @@ export async function registerRoutes(app: Express) {
   router.get("/api/farm-images/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      
+
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid ID format" });
       }
-      
+
       const image = await db.select().from(farmImages).where(sql`${farmImages.id} = ${id}`).limit(1);
-      
+
       if (!image || image.length === 0) {
         return res.status(404).json({ message: "Farm image not found" });
       }
-      
+
       res.json(image[0]);
     } catch (error) {
       console.error("Error fetching farm image by ID:", error);
@@ -130,7 +130,7 @@ export async function registerRoutes(app: Express) {
 
       // Check if this image already has a description
       let existingImage;
-      
+
       if (id) {
         // If numeric ID is provided, use it (preferred)
         [existingImage] = await db.select().from(farmImages).where(sql`${farmImages.id} = ${id}`);
@@ -149,7 +149,7 @@ export async function registerRoutes(app: Express) {
         // Create a new thread for the Assistant
         const thread = await openai.beta.threads.create();
         console.log("Created new thread for image analysis:", thread.id);
-        
+
         // Add a message with the image to the thread
         await openai.beta.threads.messages.create(
           thread.id,
@@ -162,12 +162,14 @@ export async function registerRoutes(app: Express) {
               },
               { 
                 type: "image_url", 
-                image_url: { url: `data:image/jpeg;base64,${imageBase64}` } 
+                image_url: { 
+                  url: imageBase64.startsWith('http') ? imageBase64 : `data:image/jpeg;base64,${imageBase64.replace(/^data:image\/[a-z]+;base64,/, '')}`
+                } 
               }
             ],
           }
         );
-        
+
         // Run the assistant on the thread
         const run = await openai.beta.threads.runs.create(
           thread.id,
@@ -175,24 +177,24 @@ export async function registerRoutes(app: Express) {
             assistant_id: ASSISTANT_ID
           }
         );
-        
+
         // Poll for the run completion
         let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-        
+
         // Wait for the run to complete
         while (runStatus.status !== 'completed' && runStatus.status !== 'failed') {
           await new Promise(resolve => setTimeout(resolve, 1000));
           runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
         }
-        
+
         if (runStatus.status === 'failed') {
           throw new Error("Assistant run failed: " + JSON.stringify(runStatus.last_error));
         }
-        
+
         // Get the assistant's response
         const messages = await openai.beta.threads.messages.list(thread.id);
         const assistantMessages = messages.data.filter(msg => msg.role === "assistant");
-        
+
         if (assistantMessages.length > 0) {
           const latestMessage = assistantMessages[0];
           description = latestMessage.content
