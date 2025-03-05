@@ -66,10 +66,9 @@ export default function ImageFetcher() {
   };
 
   const handleImageSelect = async (image: FarmImage) => {
-    setAnalyzing(prev => ({ ...prev, [image.id.toString()]: true })); // Use image.id
+    setAnalyzing(prev => ({ ...prev, [image.id.toString()]: true })); 
     try {
-      // Navigate to the story page with the image.id
-      setLocation(`/story/${encodeURIComponent(image.id.toString())}`); // Use image.id
+      setLocation(`/story/${encodeURIComponent(image.id.toString())}`); 
     } catch (error) {
       toast({
         title: "Error",
@@ -78,7 +77,7 @@ export default function ImageFetcher() {
       });
       console.error("Error selecting image:", error);
     } finally {
-      setAnalyzing(prev => ({ ...prev, [image.id.toString()]: false })); // Use image.id
+      setAnalyzing(prev => ({ ...prev, [image.id.toString()]: false })); 
     }
   };
 
@@ -88,7 +87,7 @@ export default function ImageFetcher() {
         <LoadingAnimation />
       ) : (
         images.map((image, index) => (
-          <Card key={image.id} className="overflow-hidden relative"> {/* Use image.id as key */}
+          <Card key={image.id} className="overflow-hidden relative"> 
             <div 
               className="aspect-square p-2 cursor-pointer" 
               onClick={() => !analyzing[image.id.toString()] && handleImageSelect(image)}

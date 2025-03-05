@@ -5,7 +5,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingAnimation } from "@/components/ui/loading-animation";
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
-import { LoadingAnimation } from '@/components/ui/loading-animation'; // Added import
 
 
 interface FarmImage {

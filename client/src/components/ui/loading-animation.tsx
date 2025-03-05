@@ -2,6 +2,9 @@
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
+import { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
+
 interface LoadingAnimationProps {
   message?: string;
   variant?: "default" | "large";
@@ -46,6 +49,16 @@ export function LoadingAnimation({ message = "Loading...", variant = "default" }
         <p className={`font-medium ${variant === "large" ? "text-xl" : "text-base"}`}>
           {message}{dots}
         </p>
+      </div>
+      
+      {variant === "large" && (
+        <div className="mt-6 w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-full bg-primary rounded-full animate-progress"></div>
+        </div>
+      )}
+    </div>
+  );
+}
       </div>
     </div>
   );
