@@ -9,8 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import StoryDisplay from "@/components/story-display";
 
 interface StoryState {
-  characterName: string;
-  description: string;
+  characterDescription: string;
   threadId: string | null;
   storyText: string;
   illustration: string | null;
@@ -22,8 +21,7 @@ export default function Story() {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [additionalPrompt, setAdditionalPrompt] = useState("");
   const [storyState, setStoryState] = useState<StoryState>({
-    characterName: "",
-    description: "",
+    characterDescription: "",
     threadId: null,
     storyText: "",
     illustration: null
@@ -33,7 +31,7 @@ export default function Story() {
   const imagePath = characterId ? decodeURIComponent(characterId) : null;
 
   if (!imagePath) {
-    return <div>Image not found</div>;
+    return <div>Character not found</div>;
   }
 
   // Convert image to base64
@@ -42,55 +40,55 @@ export default function Story() {
       try {
         const response = await fetch(imagePath);
         const blob = await response.blob();
+        const reader = new FileReader();
 
-        return new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64String = reader.result as string;
-            const base64 = base64String.split(',')[1];
-            setImageBase64(base64);
-            resolve(base64);
-          };
-          reader.readAsDataURL(blob);
-        });
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          const base64 = base64String.split(',')[1];
+          setImageBase64(base64);
+        };
+
+        reader.readAsDataURL(blob);
       } catch (error) {
         console.error("Error converting image to base64:", error);
         toast({
           title: "Error",
-          description: "Failed to load image. Please try again.",
+          description: "Failed to load character image. Please try again.",
           variant: "destructive",
         });
-        return null;
       }
     };
 
     convertImageToBase64();
   }, [imagePath, toast]);
 
-  // Analyze image and get description
+  // Analyze image and create thread
   const { isLoading: isAnalyzing } = useQuery({
     queryKey: ['/api/analyze-image', imagePath],
     queryFn: async () => {
       if (!imageBase64) return null;
 
       const result = await analyzeCharacterImage(imageBase64);
+
       setStoryState(prev => ({
         ...prev,
-        description: result.description,
+        characterDescription: result.description,
         threadId: result.threadId
       }));
+
       return result;
     },
     enabled: !!imageBase64
   });
 
-  // Generate story mutation
+  // Generate story using the Assistant
   const generateStoryMutation = useMutation({
     mutationFn: async () => {
+      if (!storyState.threadId) throw new Error("No thread ID available");
+
       const result = await generateStory(
         storyState.threadId,
-        storyState.characterName,
-        storyState.description,
+        storyState.characterDescription,
         additionalPrompt
       );
 
@@ -101,10 +99,17 @@ export default function Story() {
       }));
 
       return result;
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to generate story. Please try again.",
+        variant: "destructive",
+      });
     }
   });
 
-  // Generate illustration mutation
+  // Generate illustration
   const generateIllustrationMutation = useMutation({
     mutationFn: async () => {
       const url = await generateIllustration(storyState.storyText);
@@ -116,7 +121,7 @@ export default function Story() {
     }
   });
 
-  // Save story mutation
+  // Save story
   const saveStoryMutation = useMutation({
     mutationFn: async () => {
       return fetch("/api/stories", {
@@ -134,8 +139,8 @@ export default function Story() {
     },
     onSuccess: () => {
       toast({
-        title: "Story saved!",
-        description: "Your magical tale has been saved successfully."
+        title: "Success",
+        description: "Your magical tale has been saved!",
       });
     }
   });
@@ -152,18 +157,18 @@ export default function Story() {
               <img 
                 src={imagePath} 
                 alt="Selected Farm Friend" 
-                className="w-48 h-48 object-cover rounded-lg"
+                className="w-48 h-48 object-cover rounded-lg shadow-md"
               />
               <div className="flex-1">
                 <h3 className="text-xl font-semibold mb-2">Your Farm Friend</h3>
-                {storyState.description && (
-                  <p className="text-gray-600 italic mb-4">{storyState.description}</p>
+                {storyState.characterDescription && (
+                  <p className="text-gray-600 italic mb-4">{storyState.characterDescription}</p>
                 )}
               </div>
             </div>
 
             {/* Story Tuning */}
-            {storyState.description && !storyState.storyText && (
+            {storyState.characterDescription && !storyState.storyText && (
               <div className="space-y-4">
                 <div className="mb-4">
                   <label className="block text-sm font-medium mb-2">
@@ -183,6 +188,13 @@ export default function Story() {
                 >
                   {generateStoryMutation.isPending ? "Creating Story..." : "Generate Story"}
                 </Button>
+              </div>
+            )}
+
+            {/* Loading State */}
+            {isAnalyzing && (
+              <div className="text-center py-8">
+                <p>Analyzing your farm friend...</p>
               </div>
             )}
 

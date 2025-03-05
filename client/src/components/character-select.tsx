@@ -1,31 +1,39 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
 interface CharacterSelectProps {
-  onProceed: (imageId: string) => void;
+  imagePath: string;
+  onSelect: () => void;
 }
 
-export function CharacterSelect({ onProceed }: CharacterSelectProps) {
+export function CharacterSelect({ imagePath, onSelect }: CharacterSelectProps) {
   const [_, setLocation] = useLocation();
 
-  const handleGoToDebug = () => {
-    setLocation("/debug");
+  const handleSelect = () => {
+    // Navigate to the story page with the encoded image path
+    const encodedPath = encodeURIComponent(imagePath);
+    setLocation(`/story/${encodedPath}`);
+    onSelect();
   };
 
   return (
-    <div className="mt-6 text-center">
-      <p className="text-gray-600 mb-4">
-        Select a character above to create a farm story with them!
-      </p>
-      <div className="flex justify-center gap-4">
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+      <div className="aspect-square">
+        <img 
+          src={imagePath} 
+          alt="Farm Character" 
+          className="w-full h-full object-cover"
+        />
+      </div>
+      <div className="p-4">
         <Button 
-          onClick={handleGoToDebug} 
-          variant="outline"
+          onClick={handleSelect}
+          className="w-full"
         >
-          Go to Debug Page
+          Select Character
         </Button>
       </div>
-    </div>
+    </Card>
   );
 }
