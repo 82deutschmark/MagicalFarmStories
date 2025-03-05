@@ -164,22 +164,39 @@ export async function registerRoutes(app: Express) {
         description = response.choices[0]?.message?.content || "";
 
         // Update the database with the new description
-        await db.update(farmImages)
-          .set({ 
-            description: description,
-            analyzedByAI: true
-          })
-          .where(sql`${farmImages.storyMakerId} = ${storyMakerId}`);
+        if (id) {
+          await db.update(farmImages)
+            .set({ 
+              description: description,
+              analyzedByAI: true
+            })
+            .where(sql`${farmImages.id} = ${id}`);
+        } else {
+          await db.update(farmImages)
+            .set({ 
+              description: description,
+              analyzedByAI: true
+            })
+            .where(sql`${farmImages.storyMakerId} = ${storyMakerId}`);
+        }
 
         console.log("Updated image with new AI description");
       }
 
       // Increment the selection count
-      await db.update(farmImages)
-        .set({ 
-          selectionCount: sql`${farmImages.selectionCount} + 1`
-        })
-        .where(sql`${farmImages.storyMakerId} = ${storyMakerId}`);
+      if (id) {
+        await db.update(farmImages)
+          .set({ 
+            selectionCount: sql`${farmImages.selectionCount} + 1`
+          })
+          .where(sql`${farmImages.id} = ${id}`);
+      } else {
+        await db.update(farmImages)
+          .set({ 
+            selectionCount: sql`${farmImages.selectionCount} + 1`
+          })
+          .where(sql`${farmImages.storyMakerId} = ${storyMakerId}`);
+      }
 
       res.json({ description, storyMakerId });
     } catch (error: any) {
