@@ -146,9 +146,9 @@ export async function registerRoutes(app: Express) {
         description = existingImage.description;
         console.log("Using existing image description");
       } else {
-        // Create a new thread for the Assistant
-        const thread = await openai.beta.threads.create();
-        console.log("Created new thread for image analysis:", thread.id);
+        // Use specified thread ID instead of creating a new one
+        const threadId = "thread_LOANhYvFexEDJVyAoLfKw2av";
+        console.log("Using existing thread for image analysis:", threadId);
 
         // Prepare the image URL - only accept HTTP URLs or proper data URLs
         let imageUrl;
@@ -187,7 +187,7 @@ export async function registerRoutes(app: Express) {
 
         // Add a message with the image to the thread
         await openai.beta.threads.messages.create(
-          thread.id,
+          threadId,
           {
             role: "user",
             content: [
@@ -208,23 +208,23 @@ export async function registerRoutes(app: Express) {
         try {
           // Run the assistant on the thread
           const run = await openai.beta.threads.runs.create(
-            thread.id,
+            threadId,
             { 
               assistant_id: ASSISTANT_ID
             }
           );
           
-          console.log(`Started run ${run.id} on thread ${thread.id} to analyze image`);
+          console.log(`Started run ${run.id} on thread ${threadId} to analyze image`);
 
           // Poll for the run completion
-          let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+          let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
           let attempts = 0;
           const maxAttempts = 60; // Maximum number of polling attempts (60 seconds)
 
           // Wait for the run to complete
           while (runStatus.status !== 'completed' && runStatus.status !== 'failed' && attempts < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, 1000));
-            runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+            runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id);
             attempts++;
             
             if (attempts % 10 === 0) {
@@ -246,7 +246,7 @@ export async function registerRoutes(app: Express) {
         }
 
         // Get the assistant's response
-        const messages = await openai.beta.threads.messages.list(thread.id);
+        const messages = await openai.beta.threads.messages.list(threadId);
         const assistantMessages = messages.data.filter(msg => msg.role === "assistant");
 
         if (assistantMessages.length > 0) {
@@ -265,7 +265,7 @@ export async function registerRoutes(app: Express) {
             .set({ 
               description: description,
               analyzedByAI: true,
-              threadId: thread.id // Store the thread ID for future use
+              threadId: threadId // Store the thread ID for future use
             })
             .where(sql`${farmImages.id} = ${id}`);
         } else {
@@ -273,7 +273,7 @@ export async function registerRoutes(app: Express) {
             .set({ 
               description: description,
               analyzedByAI: true,
-              threadId: thread.id // Store the thread ID for future use
+              threadId: threadId // Store the thread ID for future use
             })
             .where(sql`${farmImages.storyMakerId} = ${storyMakerId}`);
         }
