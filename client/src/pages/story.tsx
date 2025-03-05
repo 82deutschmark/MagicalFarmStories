@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRoute } from 'wouter';
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
 
 interface FarmImage {
