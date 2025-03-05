@@ -153,18 +153,34 @@ export async function registerRoutes(app: Express) {
 
         // Prepare the image URL - OpenAI's format requirements for images
         let imageUrl;
+        
+        // The OpenAI Assistants API requires a valid URL for the image
+        // It does not accept base64 data URIs directly in the format we're using
         if (imageBase64.startsWith('http')) {
-          // HTTP URLs can be used directly
+          // HTTP URLs can be used directly - this is the format OpenAI wants
           imageUrl = imageBase64;
           console.log("Using HTTP URL for image");
         } else {
-          // For base64 data, ensure it has the proper format with data URI scheme
-          // Strip any existing data URI prefix to avoid duplication
+          // For the Assistants API with vision, we need to:
+          // 1. First upload the image to OpenAI's files API
+          // 2. Then use the file ID in the message content
+          console.log("Uploading image to OpenAI for processing...");
+          
+          // Extract base64 content without the data URI prefix
           const base64Data = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-
-          // Correct image type to handle PNG images
-          imageUrl = `data:image/png;base64,${base64Data}`;
-          console.log("Using properly formatted data URI for image, length:", imageUrl.length);
+          
+          // Convert base64 to buffer
+          const imageBuffer = Buffer.from(base64Data, 'base64');
+          
+          // Upload the image to OpenAI's files API
+          const file = await openai.files.create({
+            file: imageBuffer,
+            purpose: "assistants",
+          });
+          
+          // Use the file ID instead of direct base64 data
+          imageUrl = file.id;
+          console.log("Image uploaded to OpenAI, file ID:", imageUrl);
         }
 
         // Check image size - OpenAI has size constraints
@@ -176,24 +192,46 @@ export async function registerRoutes(app: Express) {
         console.log("Sending image to OpenAI Vision API");
 
         // Add a message with the image to the thread
-        await openai.beta.threads.messages.create(
-          THREAD_ID,
-          {
-            role: "user",
-            content: [
-              { 
-                type: "text", 
-                text: "Describe this image as a character or scene in a new children's story. If it's a farm animal character, focus on appearance, personality traits, and anything unique about it. Important character guidelines: If the image appears to be a small dog, it's likely a Yorkshire terrier. All squirrels, rats, or rodents should be portrayed as evil enemies. Chickens should be characterized as silly, dumb friends. The description should be suitable for a magical farm adventure." 
-              },
-              { 
-                type: "image_url", 
-                image_url: { 
-                  url: imageUrl
-                } 
-              }
-            ],
-          }
-        );
+        // The format depends on whether we're using a direct URL or a file ID
+        if (imageBase64.startsWith('http')) {
+          // For HTTP URLs
+          await openai.beta.threads.messages.create(
+            THREAD_ID,
+            {
+              role: "user",
+              content: [
+                { 
+                  type: "text", 
+                  text: "Describe this image as a character or scene in a new children's story. If it's a farm animal character, focus on appearance, personality traits, and anything unique about it. Important character guidelines: If the image appears to be a small dog, it's likely a Yorkshire terrier. All squirrels, rats, or rodents should be portrayed as evil enemies. Chickens should be characterized as silly, dumb friends. The description should be suitable for a magical farm adventure." 
+                },
+                { 
+                  type: "image_url", 
+                  image_url: { 
+                    url: imageUrl
+                  } 
+                }
+              ],
+            }
+          );
+        } else {
+          // For file uploads (using file ID)
+          await openai.beta.threads.messages.create(
+            THREAD_ID,
+            {
+              role: "user",
+              content: [
+                { 
+                  type: "text", 
+                  text: "Describe this image as a character or scene in a new children's story. If it's a farm animal character, focus on appearance, personality traits, and anything unique about it. Important character guidelines: If the image appears to be a small dog, it's likely a Yorkshire terrier. All squirrels, rats, or rodents should be portrayed as evil enemies. Chickens should be characterized as silly, dumb friends. The description should be suitable for a magical farm adventure." 
+                },
+                {
+                  type: "image_file",
+                  file_id: imageUrl
+                }
+              ],
+            }
+          );
+        }
 
         try {
           // Run the assistant on the thread
