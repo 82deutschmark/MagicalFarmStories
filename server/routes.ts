@@ -151,37 +151,25 @@ export async function registerRoutes(app: Express) {
         // Use specified thread ID instead of creating a new one
         console.log("Using existing thread for image analysis:", THREAD_ID);
 
-        // Prepare the image URL - OpenAI's format requirements for images
-        let imageUrl;
+        // The images are stored in the database as base64 strings
+        // For OpenAI Assistants API, we need to convert the base64 to a buffer and upload the file
+        console.log("Preparing image from database for OpenAI...");
         
-        // The OpenAI Assistants API requires a valid URL for the image
-        // It does not accept base64 data URIs directly in the format we're using
-        if (imageBase64.startsWith('http')) {
-          // HTTP URLs can be used directly - this is the format OpenAI wants
-          imageUrl = imageBase64;
-          console.log("Using HTTP URL for image");
-        } else {
-          // For the Assistants API with vision, we need to:
-          // 1. First upload the image to OpenAI's files API
-          // 2. Then use the file ID in the message content
-          console.log("Uploading image to OpenAI for processing...");
-          
-          // Extract base64 content without the data URI prefix
-          const base64Data = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
-          
-          // Convert base64 to buffer
-          const imageBuffer = Buffer.from(base64Data, 'base64');
-          
-          // Upload the image to OpenAI's files API
-          const file = await openai.files.create({
-            file: imageBuffer,
-            purpose: "assistants",
-          });
-          
-          // Use the file ID instead of direct base64 data
-          imageUrl = file.id;
-          console.log("Image uploaded to OpenAI, file ID:", imageUrl);
-        }
+        // Clean the base64 data (remove any data URI prefix if present)
+        const base64Data = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+        
+        // Convert base64 to buffer
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+        
+        // Upload the image to OpenAI's files API
+        const file = await openai.files.create({
+          file: imageBuffer,
+          purpose: "assistants",
+        });
+        
+        // Store the file ID for use in the message
+        const fileId = file.id;
+        console.log("Image uploaded to OpenAI, file ID:", fileId);
 
         // Check image size - OpenAI has size constraints
         if (imageUrl.length > 20 * 1024 * 1024) { // 20MB limit
@@ -192,46 +180,23 @@ export async function registerRoutes(app: Express) {
         console.log("Sending image to OpenAI Vision API");
 
         // Add a message with the image to the thread
-        // The format depends on whether we're using a direct URL or a file ID
-        if (imageBase64.startsWith('http')) {
-          // For HTTP URLs
-          await openai.beta.threads.messages.create(
-            THREAD_ID,
-            {
-              role: "user",
-              content: [
-                { 
-                  type: "text", 
-                  text: "Describe this image as a character or scene in a new children's story. If it's a farm animal character, focus on appearance, personality traits, and anything unique about it. Important character guidelines: If the image appears to be a small dog, it's likely a Yorkshire terrier. All squirrels, rats, or rodents should be portrayed as evil enemies. Chickens should be characterized as silly, dumb friends. The description should be suitable for a magical farm adventure." 
-                },
-                { 
-                  type: "image_url", 
-                  image_url: { 
-                    url: imageUrl
-                  } 
-                }
-              ],
-            }
-          );
-        } else {
-          // For file uploads (using file ID)
-          await openai.beta.threads.messages.create(
-            THREAD_ID,
-            {
-              role: "user",
-              content: [
-                { 
-                  type: "text", 
-                  text: "Describe this image as a character or scene in a new children's story. If it's a farm animal character, focus on appearance, personality traits, and anything unique about it. Important character guidelines: If the image appears to be a small dog, it's likely a Yorkshire terrier. All squirrels, rats, or rodents should be portrayed as evil enemies. Chickens should be characterized as silly, dumb friends. The description should be suitable for a magical farm adventure." 
-                },
-                {
-                  type: "image_file",
-                  file_id: imageUrl
-                }
-              ],
-            }
-          );
-        }
+        // Using the file_id approach which is the recommended way for the Assistants API
+        await openai.beta.threads.messages.create(
+          THREAD_ID,
+          {
+            role: "user",
+            content: [
+              { 
+                type: "text", 
+                text: "Describe this image as a character or scene in a new children's story. If it's a farm animal character, focus on appearance, personality traits, and anything unique about it. Important character guidelines: If the image appears to be a small dog, it's likely a Yorkshire terrier. All squirrels, rats, or rodents should be portrayed as evil enemies. Chickens should be characterized as silly, dumb friends. The description should be suitable for a magical farm adventure." 
+              },
+              {
+                type: "image_file",
+                file_id: fileId
+              }
+            ],
+          }
+        );
 
         try {
           // Run the assistant on the thread
