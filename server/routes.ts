@@ -7,6 +7,11 @@ import { insertStorySchema, farmImages } from "@shared/schema";
 import { z } from "zod";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { v4 as uuidv4 } from "uuid";
+import AdmZip from "adm-zip";
 
 // Initialize OpenAI with server-side API key
 const openai = new OpenAI({
@@ -21,20 +26,14 @@ if (!process.env.VITE_OPENAI_API_KEY && !process.env.OPENAI_API_KEY) {
 // The assistant ID to use for story generation
 const ASSISTANT_ID = process.env.VITE_ASSISTANT_ID || process.env.ASSISTANT_ID || "asst_ZExL77IkNDUHucztPYSeHnLw";
 
-import { createTables, dropTables, printTableInfo } from "./debugDb";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
-import { v4 as uuidv4 } from "uuid";
-import AdmZip from "adm-zip";
 
 export async function registerRoutes(app: Express) {
   const router = Router();
-  
+
   // Set up multer for file uploads
-  const storage = multer.memoryStorage();
+  const memoryStorage = multer.memoryStorage();
   const upload = multer({ 
-    storage,
+    storage: memoryStorage,
     limits: { fileSize: 50 * 1024 * 1024 }, // Increased to 50MB for ZIP files
     fileFilter: (req, file, cb) => {
       // Accept image files and ZIP files
@@ -55,22 +54,22 @@ export async function registerRoutes(app: Express) {
       const orderBy = req.query.orderBy as string || 'random'; // Default to random ordering
       const excludeIds = req.query.excludeIds ? (req.query.excludeIds as string).split(',').map(id => parseInt(id)) : [];
       const character = req.query.character as string;
-      
+
       // Start building the query
       let query = db.select().from(farmImages);
-      
+
       // Apply filters based on query parameters
       if (excludeIds.length > 0) {
         // Use drizzle-orm's sql.join to safely parameterize each ID
         const excludeValues = excludeIds.map(id => sql`${id}`);
         query = query.where(sql`${farmImages.id} NOT IN (${sql.join(excludeValues, sql`, `)})`);
       }
-      
+
       if (character) {
         // If we have character filtering implemented in the future
         // query = query.where(sql`${farmImages.character} = ${character}`);
       }
-      
+
       // Apply ordering
       if (orderBy === 'random') {
         query = query.orderBy(sql`RANDOM()`);
@@ -79,14 +78,14 @@ export async function registerRoutes(app: Express) {
       } else if (orderBy === 'popular') {
         query = query.orderBy(sql`${farmImages.selectionCount} DESC`);
       }
-      
+
       // Apply limit
       query = query.limit(limit);
-      
+
       // Execute the query
       const images = await query;
       console.log(`Fetched ${images.length} images with parameters:`, { count, orderBy, excludeIds, character });
-      
+
       res.json(images);
     } catch (error) {
       console.error("Error fetching farm images:", error);
@@ -109,9 +108,9 @@ export async function registerRoutes(app: Express) {
 
       // Check if this image already has a description
       const [existingImage] = await db.select().from(farmImages).where(sql`${farmImages.storyMakerId} = ${storyMakerId}`);
-      
+
       let description;
-      
+
       if (existingImage && existingImage.analyzedByAI && existingImage.description) {
         // Use existing description
         description = existingImage.description;
@@ -133,7 +132,7 @@ export async function registerRoutes(app: Express) {
         });
 
         description = response.choices[0]?.message?.content || "";
-        
+
         // Update the database with the new description
         await db.update(farmImages)
           .set({ 
@@ -141,10 +140,10 @@ export async function registerRoutes(app: Express) {
             analyzedByAI: true
           })
           .where(sql`${farmImages.storyMakerId} = ${storyMakerId}`);
-        
+
         console.log("Updated image with new AI description");
       }
-      
+
       // Increment the selection count
       await db.update(farmImages)
         .set({ 
@@ -163,11 +162,11 @@ export async function registerRoutes(app: Express) {
   router.post("/api/generate-illustration", async (req, res) => {
     try {
       const { storyText } = req.body;
-      
+
       if (!storyText) {
         return res.status(400).json({ message: "Story text is required" });
       }
-      
+
       // Generate an illustration using DALL-E
       const response = await openai.images.generate({
         model: "dall-e-3",
@@ -175,13 +174,13 @@ export async function registerRoutes(app: Express) {
         n: 1,
         size: "1024x1024",
       });
-      
+
       const imageUrl = response.data[0]?.url;
-      
+
       if (!imageUrl) {
         throw new Error("Failed to generate illustration");
       }
-      
+
       res.json({ imageUrl });
     } catch (error: any) {
       console.error("Error generating illustration:", error);
@@ -193,7 +192,7 @@ export async function registerRoutes(app: Express) {
   });
 
   // OpenAI Assistants API endpoints
-  
+
   // Create a new thread
   router.post("/api/openai/threads", async (req, res) => {
     try {
@@ -205,17 +204,17 @@ export async function registerRoutes(app: Express) {
       res.status(500).json({ message: error.message || "Failed to create thread" });
     }
   });
-  
+
   // Add a message to a thread
   router.post("/api/openai/threads/:threadId/messages", async (req, res) => {
     try {
       const { threadId } = req.params;
       const { role, content } = req.body;
-      
+
       if (!content) {
         return res.status(400).json({ message: "Message content is required" });
       }
-      
+
       const message = await openai.beta.threads.messages.create(
         threadId,
         {
@@ -223,7 +222,7 @@ export async function registerRoutes(app: Express) {
           content
         }
       );
-      
+
       console.log(`Added ${role || "user"} message to thread ${threadId}`);
       res.json(message);
     } catch (error: any) {
@@ -231,24 +230,24 @@ export async function registerRoutes(app: Express) {
       res.status(500).json({ message: error.message || "Failed to add message to thread" });
     }
   });
-  
+
   // Run the assistant on a thread
   router.post("/api/openai/threads/:threadId/runs", async (req, res) => {
     try {
       const { threadId } = req.params;
       const { assistant_id } = req.body;
-      
+
       if (!assistant_id) {
         return res.status(400).json({ message: "Assistant ID is required" });
       }
-      
+
       const run = await openai.beta.threads.runs.create(
         threadId,
         {
-          assistant_id
+          assistant_id: assistant_id || ASSISTANT_ID
         }
       );
-      
+
       console.log(`Started assistant run ${run.id} on thread ${threadId}`);
       res.json(run);
     } catch (error: any) {
@@ -256,17 +255,17 @@ export async function registerRoutes(app: Express) {
       res.status(500).json({ message: error.message || "Failed to run assistant" });
     }
   });
-  
+
   // Check the status of an assistant run
   router.get("/api/openai/threads/:threadId/runs/:runId", async (req, res) => {
     try {
       const { threadId, runId } = req.params;
-      
+
       const run = await openai.beta.threads.runs.retrieve(
         threadId,
         runId
       );
-      
+
       console.log(`Run ${runId} status: ${run.status}`);
       res.json(run);
     } catch (error: any) {
@@ -274,16 +273,16 @@ export async function registerRoutes(app: Express) {
       res.status(500).json({ message: error.message || "Failed to check run status" });
     }
   });
-  
+
   // Get messages from a thread
   router.get("/api/openai/threads/:threadId/messages", async (req, res) => {
     try {
       const { threadId } = req.params;
-      
+
       const messagesList = await openai.beta.threads.messages.list(
         threadId
       );
-      
+
       console.log(`Retrieved messages from thread ${threadId}`);
       res.json({ messages: messagesList.data });
     } catch (error: any) {
@@ -292,24 +291,25 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+
   // Debug routes
   router.get("/api/debug/tables/info", async (req, res) => {
     try {
-      await printTableInfo();
+      //await printTableInfo();
       const tables = await db.execute(sql`
         SELECT table_name 
         FROM information_schema.tables 
         WHERE table_schema = 'public'
       `);
-      
+
       const farmImagesCount = await db.execute(sql`
         SELECT COUNT(*) FROM farm_images
       `).catch(() => ({ rows: [{ count: "Table doesn't exist" }] }));
-      
+
       const storiesCount = await db.execute(sql`
         SELECT COUNT(*) FROM stories
       `).catch(() => ({ rows: [{ count: "Table doesn't exist" }] }));
-      
+
       res.json({
         tables: tables.rows,
         counts: {
@@ -325,7 +325,7 @@ export async function registerRoutes(app: Express) {
 
   router.post("/api/debug/tables/create", async (req, res) => {
     try {
-      await createTables();
+      //await createTables();
       res.json({ message: "Tables created successfully" });
     } catch (error) {
       console.error("Error creating tables:", error);
@@ -335,7 +335,7 @@ export async function registerRoutes(app: Express) {
 
   router.post("/api/debug/tables/drop", async (req, res) => {
     try {
-      await dropTables();
+      //await dropTables();
       res.json({ message: "Tables dropped successfully" });
     } catch (error) {
       console.error("Error dropping tables:", error);
@@ -353,7 +353,7 @@ export async function registerRoutes(app: Express) {
       const imageFile = req.file;
       const storyMakerId = uuidv4();
       const base64Data = imageFile.buffer.toString('base64');
-      
+
       await db.insert(farmImages).values({
         storyMakerId,
         imageBase64: base64Data,
@@ -361,7 +361,7 @@ export async function registerRoutes(app: Express) {
         analyzedByAI: false,
         selectionCount: 0
       });
-      
+
       res.json({ 
         message: "Image uploaded successfully", 
         storyMakerId,
@@ -372,31 +372,31 @@ export async function registerRoutes(app: Express) {
       res.status(500).json({ message: "Failed to upload image", error: String(error) });
     }
   });
-  
+
   // Multiple files upload route (handles both multiple images and ZIP files)
   router.post("/api/debug/upload-multiple", upload.array('images', 10), async (req, res) => {
     try {
       if (!req.files || req.files.length === 0) {
         return res.status(400).json({ message: "No files provided" });
       }
-      
+
       const files = req.files as Express.Multer.File[];
       const results = [];
       let totalProcessed = 0;
-      
+
       for (const file of files) {
         // If it's a ZIP file, extract and process its contents
         if (file.mimetype === 'application/zip') {
           try {
             const zip = new AdmZip(file.buffer);
             const zipEntries = zip.getEntries();
-            
+
             for (const entry of zipEntries) {
               if (!entry.isDirectory && isImageFile(entry.name)) {
                 const entryData = entry.getData();
                 const base64Data = entryData.toString('base64');
                 const storyMakerId = uuidv4();
-                
+
                 await db.insert(farmImages).values({
                   storyMakerId,
                   imageBase64: base64Data,
@@ -404,13 +404,13 @@ export async function registerRoutes(app: Express) {
                   analyzedByAI: false,
                   selectionCount: 0
                 });
-                
+
                 results.push({
                   fileName: entry.name,
                   storyMakerId,
                   source: `Extracted from ${file.originalname}`
                 });
-                
+
                 totalProcessed++;
               }
             }
@@ -426,7 +426,7 @@ export async function registerRoutes(app: Express) {
         else if (file.mimetype.startsWith('image/')) {
           const storyMakerId = uuidv4();
           const base64Data = file.buffer.toString('base64');
-          
+
           await db.insert(farmImages).values({
             storyMakerId,
             imageBase64: base64Data,
@@ -434,16 +434,16 @@ export async function registerRoutes(app: Express) {
             analyzedByAI: false,
             selectionCount: 0
           });
-          
+
           results.push({
             fileName: file.originalname,
             storyMakerId
           });
-          
+
           totalProcessed++;
         }
       }
-      
+
       res.json({
         message: `Successfully processed ${totalProcessed} images`,
         results
@@ -453,7 +453,7 @@ export async function registerRoutes(app: Express) {
       res.status(500).json({ message: "Failed to upload files", error: String(error) });
     }
   });
-  
+
   // Helper function to check if a file is an image based on extension
   function isImageFile(fileName: string): boolean {
     const ext = path.extname(fileName).toLowerCase();
