@@ -1,7 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import knex from 'knex'; // Assume knex is used for database migrations
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
@@ -37,37 +36,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Placeholder for database configuration -  REPLACE WITH YOUR ACTUAL CONFIGURATION
-const knexConfig = {
-  client: 'pg', // Or your database client
-  connection: {
-    host : 'localhost',
-    user : 'your_db_user',
-    password : 'your_db_password',
-    database : 'your_db_name'
-  },
-  migrations: {
-    directory: './migrations' // Path to your migrations directory
-  }
-};
-
-const db = knex(knexConfig);
-
-
-async function checkAndMigrateDatabase() {
-  try {
-    await db.migrate.latest();
-    log('Database migrations complete.');
-  } catch (error) {
-    console.error('Error during database migration:', error);
-    process.exit(1); // Exit if migration fails
-  }
-}
-
 (async () => {
-  // Check and migrate database before starting server
-  await checkAndMigrateDatabase();
-
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
