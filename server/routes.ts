@@ -45,6 +45,28 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  // Get farm image by ID
+  router.get("/api/farm-images/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ID format" });
+      }
+      
+      const image = await db.select().from(farmImages).where(sql`${farmImages.id} = ${id}`).limit(1);
+      
+      if (!image || image.length === 0) {
+        return res.status(404).json({ message: "Farm image not found" });
+      }
+      
+      res.json(image[0]);
+    } catch (error) {
+      console.error("Error fetching farm image by ID:", error);
+      res.status(500).json({ message: "Failed to fetch farm image" });
+    }
+  });
+
   // Get farm images from database with flexible options
   router.get("/api/farm-images", async (req, res) => {
     try {
@@ -96,18 +118,26 @@ export async function registerRoutes(app: Express) {
   // API endpoints
   router.post("/api/analyze-image", async (req, res) => {
     try {
-      const { imageBase64, storyMakerId } = req.body;
+      const { imageBase64, storyMakerId, id } = req.body;
 
       if (!imageBase64) {
         return res.status(400).json({ message: "Image data required" });
       }
 
-      if (!storyMakerId) {
-        return res.status(400).json({ message: "Story maker ID required" });
+      if (!storyMakerId && !id) {
+        return res.status(400).json({ message: "Either story maker ID or numeric ID required" });
       }
 
       // Check if this image already has a description
-      const [existingImage] = await db.select().from(farmImages).where(sql`${farmImages.storyMakerId} = ${storyMakerId}`);
+      let existingImage;
+      
+      if (id) {
+        // If numeric ID is provided, use it (preferred)
+        [existingImage] = await db.select().from(farmImages).where(sql`${farmImages.id} = ${id}`);
+      } else {
+        // Fallback to storyMakerId if that's what we have
+        [existingImage] = await db.select().from(farmImages).where(sql`${farmImages.storyMakerId} = ${storyMakerId}`);
+      }
 
       let description;
 

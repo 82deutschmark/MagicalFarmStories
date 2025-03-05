@@ -15,7 +15,7 @@ export function RouterComponent() {
       <Switch>
         <Route path="/" component={Home} />
         <Route 
-          path="/story/:characterId"
+          path="/story/:id"
           component={(params) => {
             logRoute('Story', params);
             return <Story />;

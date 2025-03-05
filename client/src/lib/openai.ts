@@ -287,11 +287,12 @@ export async function generateIllustration(storyText: string): Promise<string> {
 
 import axios from 'axios';
 
-export const analyzeImage = async (imageBase64: string, storyMakerId: string) => {
+export const analyzeImage = async (imageBase64: string, storyMakerId: string, id?: number) => {
   try {
     const response = await axios.post('/api/analyze-image', {
       imageBase64,
-      storyMakerId
+      storyMakerId,
+      id // Include numeric ID when available
     });
     return response.data;
   } catch (error) {
